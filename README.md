@@ -1,51 +1,101 @@
-# React + TypeScript + Vite
+# Secure Mail Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Secure Mail Client is a secure and encrypted email application that ensures privacy and confidentiality for your communications. It leverages PGP (Pretty Good Privacy) encryption to provide end-to-end encryption for all your messages. Connect it to your Gmail account or other IMAP server, and it will focus on PGP encrypted emails ONLY, ignoring the rest - making SMC the perfect choice for everyone who values digital privacy.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## Expanding the ESLint configuration
+- **PGP Encryption:** Automatically encrypts and decrypts email messages using PGP keys.
+- **Secure Inbox:** Stores all emails in an encrypted format to prevent unauthorized access.
+- **Read/Unread Message Filters:** Easily sort your inbox based on read or unread status.
+- **User-Friendly Interface:** Simple and intuitive design to manage emails efficiently.
+- **Multi-Device Support:** Accessible across multiple devices without compromising security.
+- **Message Decryption Indicator:** Displays real-time progress during message decryption.
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+---
 
-- Configure the top-level `parserOptions` property like this:
+<!-- ## Screenshots
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+### Inbox View
+![Inbox](screenshots/inbox-view.png)
+The inbox provides a clean and organized view of all your emails with the option to filter by read or unread messages.
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+### PGP Message
+![PGP Decryption](screenshots/pgp-decryption.png)
+Shows a decrypted PGP message with a progress bar to indicate the status of decryption.
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+### Sidebar Navigation
+![Sidebar Navigation](screenshots/sidebar-navigation.png)
+A simple and easy-to-navigate sidebar to manage drafts, sent emails, archived messages, and starred items.
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
-# secure-mail-client
+--- -->
+
+## Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/novalis78/secure-mail-client.git
+   ```
+2. Navigate to the project directory:
+   ```bash
+   cd secure-mail-client
+   ```
+3. Install dependencies:
+   ```bash
+   npm install
+   ```
+4. Run the application:
+   ```bash
+   npm start
+   ```
+
+---
+
+## Usage
+
+1. **Set up your PGP keys:** Ensure you have your public and private keys ready for importing.
+2. **Compose Emails:** Write secure emails by composing and encrypting them automatically.
+3. **Decrypt Incoming Emails:** Automatically decrypt received emails using your private key.
+4. **Organize Your Inbox:** Use filters and categories like drafts, sent, archived, and starred.
+
+---
+
+## Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository.
+2. Create a feature branch:
+   ```bash
+   git checkout -b feature-name
+   ```
+3. Commit your changes:
+   ```bash
+   git commit -m "Add a feature"
+   ```
+4. Push your branch:
+   ```bash
+   git push origin feature-name
+   ```
+5. Submit a pull request.
+
+---
+
+## License
+
+This project is licensed under the MIT License. See the `LICENSE` file for more details.
+
+---
+
+## Support
+
+If you encounter any issues or have questions, please open an issue on GitHub or contact support at [support@securemailclient.com](mailto:support@securemailclient.com).
+
+---
+
+## Acknowledgments
+
+- **PGP Encryption Library:** Thanks to the open-source community for providing robust encryption tools.
+- **UI/UX Design:** Special thanks to our design team for the intuitive user interface.
+
