@@ -3,13 +3,12 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "main": "electron/main.js",
+  "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "vite",
+    "dev": "tsc -b electron/tsconfig.json && concurrently \"vite\" \"electron .\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "electron:dev": "concurrently \"vite\" \"electron .\"",
     "electron:build": "vite build && electron-builder"
   },
   "dependencies": {
@@ -17,19 +16,28 @@
     "@radix-ui/react-dialog": "^1.1.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "electron-is-dev": "^3.0.1",
+    "imap": "^0.8.19",
     "lucide-react": "^0.474.0",
+    "mailparser": "^3.7.2",
+    "node-imap": "^0.9.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
+    "@types/imap": "^0.8.42",
+    "@types/mailparser": "^3.4.5",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.17",
+    "concurrently": "^9.1.2",
+    "electron": "^34.0.1",
+    "electron-builder": "^25.1.8",
     "postcss": "^8.4.33",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5.3.3",
+    "typescript": "^5.7.3",
     "vite": "^5.0.12"
   }
 }

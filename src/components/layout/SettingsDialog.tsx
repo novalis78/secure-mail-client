@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect} from 'react';
 import { X, Mail, Key, Shield, Usb } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import ErrorBoundary from '../../components/common/ErrorBoundary';
 
 const SettingsDialog = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState('email');
@@ -12,6 +13,7 @@ const SettingsDialog = ({ isOpen, onClose }) => {
   ];
 
   return (
+    <ErrorBoundary>
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-7xl h-3/4 bg-secondary-dark border border-border-dark">
         <DialogHeader>
@@ -58,55 +60,139 @@ const SettingsDialog = ({ isOpen, onClose }) => {
         </div>
       </DialogContent>
     </Dialog>
+    </ErrorBoundary>
   );
 };
 
-const EmailSettings = () => (
-  <div className="space-y-6">
-    <h3 className="text-lg font-medium text-white">Gmail IMAP Configuration</h3>
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <label className="text-sm text-gray-400">Email Address</label>
-        <input
-          type="email"
-          className="w-full bg-base-dark border border-border-dark rounded-lg px-4 py-2 text-white"
-          placeholder="your.email@gmail.com"
-        />
-      </div>
-      <div className="space-y-2">
-        <label className="text-sm text-gray-400">App Password</label>
-        <input
-          type="password"
-          className="w-full bg-base-dark border border-border-dark rounded-lg px-4 py-2 text-white"
-          placeholder="Gmail App Password"
-        />
-        <p className="text-xs text-gray-500">
-          Use an App Password generated from your Google Account settings
-        </p>
-      </div>
-      <div className="space-y-2">
-        <label className="text-sm text-gray-400">IMAP Settings</label>
-        <div className="grid grid-cols-2 gap-4">
-          <input
-            type="text"
-            className="bg-base-dark border border-border-dark rounded-lg px-4 py-2 text-white"
-            placeholder="imap.gmail.com"
-            defaultValue="imap.gmail.com"
-          />
-          <input
-            type="number"
-            className="bg-base-dark border border-border-dark rounded-lg px-4 py-2 text-white"
-            placeholder="993"
-            defaultValue="993"
-          />
+const EmailSettings = () => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [status, setStatus] = useState<'disconnected' | 'connected' | 'error'>('disconnected');
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        // Check if IMAP methods are available
+        if (!(window as any).electron?.imap) {
+            console.log('IMAP functionality not available - are you running in Electron?');
+            return;
+          }
+    
+        const setupListeners = () => {
+        window.electron.imap.onConnected(() => {
+          setStatus('connected');
+          setError(null);
+        });
+  
+        window.electron.imap.onDisconnected(() => {
+          setStatus('disconnected');
+        });
+  
+        window.electron.imap.onError((errorMsg) => {
+          setStatus('error');
+          setError(errorMsg);
+        });
+  
+        window.electron.imap.onEmailsFetched((emails) => {
+          console.log('Received emails:', emails);
+        });
+      };
+  
+      setupListeners();
+  
+      return () => {
+        window.electron.imap.disconnect().catch(console.error);
+      };
+    }, []);
+  
+    const handleSave = async () => {
+        if (!(window as any).electron?.imap) {
+            setError('IMAP functionality only available in Electron environment');
+            return;
+            }
+            
+      try {
+        setError(null);
+        await window.electron.imap.connect({
+          user: email,
+          password: password
+        });
+  
+        await window.electron.imap.fetchEmails();
+      } catch (err) {
+        setStatus('error');
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      }
+    };
+  
+    return (
+      <div className="space-y-6">
+        <h3 className="text-lg font-medium text-white">Gmail IMAP Configuration</h3>
+        
+        {status === 'error' && error && (
+          <div className="bg-red-500/10 text-red-500 p-4 rounded-lg">
+            {error}
+          </div>
+        )}
+        
+        {status === 'connected' && (
+          <div className="bg-green-500/10 text-green-500 p-4 rounded-lg">
+            Connected successfully
+          </div>
+        )}
+  
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm text-gray-400">Email Address</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-base-dark border border-border-dark rounded-lg px-4 py-2 text-white"
+              placeholder="your.email@gmail.com"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm text-gray-400">App Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-base-dark border border-border-dark rounded-lg px-4 py-2 text-white"
+              placeholder="Gmail App Password"
+            />
+            <p className="text-xs text-gray-500">
+              Use an App Password generated from your Google Account settings
+            </p>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm text-gray-400">IMAP Settings</label>
+            <div className="grid grid-cols-2 gap-4">
+              <input
+                type="text"
+                className="bg-base-dark border border-border-dark rounded-lg px-4 py-2 text-white"
+                placeholder="imap.gmail.com"
+                defaultValue="imap.gmail.com"
+                disabled
+              />
+              <input
+                type="number"
+                className="bg-base-dark border border-border-dark rounded-lg px-4 py-2 text-white"
+                placeholder="993"
+                defaultValue="993"
+                disabled
+              />
+            </div>
+          </div>
+          <button 
+            onClick={handleSave}
+            className="bg-accent-green text-white px-4 py-2 rounded-lg hover:bg-accent-green/90"
+          >
+            {status === 'connected' ? 'Reconnect' : 'Save Configuration'}
+          </button>
         </div>
       </div>
-      <button className="bg-accent-green text-white px-4 py-2 rounded-lg hover:bg-accent-green/90">
-        Save Configuration
-      </button>
-    </div>
-  </div>
-);
+    );
+  };
 
 const KeyManagement = () => (
   <div className="space-y-6">

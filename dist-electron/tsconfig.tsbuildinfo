@@ -1,0 +1,1 @@
+{"root":["../electron/src/main.ts","../electron/src/preload.ts","../electron/src/services/ImapService.ts"],"version":"5.7.3"}
