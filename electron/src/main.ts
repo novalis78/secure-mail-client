@@ -1,8 +1,10 @@
 // electron/src/main.ts
 import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
-import * as isDev from 'electron-is-dev';
 import { ImapService } from './services/ImapService';
+
+// Development environment check
+const isDev = !app.isPackaged || process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true';
 
 let mainWindow: BrowserWindow | null = null;
 let imapService: ImapService | null = null;

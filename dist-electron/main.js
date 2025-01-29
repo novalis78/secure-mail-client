@@ -36,8 +36,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // electron/src/main.ts
 const electron_1 = require("electron");
 const path = __importStar(require("path"));
-const isDev = __importStar(require("electron-is-dev"));
 const ImapService_1 = require("./services/ImapService");
+// Development environment check
+const isDev = !electron_1.app.isPackaged || process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true';
 let mainWindow = null;
 let imapService = null;
 function createWindow() {

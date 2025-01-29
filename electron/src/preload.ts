@@ -21,6 +21,11 @@ contextBridge.exposeInMainWorld('electron', {
     onError: (callback: (error: string) => void) => 
       ipcRenderer.on('imap:error', (_, error: string) => callback(error)),
     onEmailsFetched: (callback: (emails: any[]) => void) => 
-      ipcRenderer.on('imap:emails-fetched', (_, emails: any[]) => callback(emails))
+      ipcRenderer.on('imap:emails-fetched', (_, emails: any[]) => callback(emails)),
+    // Add these new handlers
+    onProgress: (callback: (progress: { current: number; total: number }) => void) =>
+      ipcRenderer.on('imap:progress', (_, progress) => callback(progress)),
+    onStatus: (callback: (status: string) => void) =>
+      ipcRenderer.on('imap:status', (_, status) => callback(status))
   }
 });

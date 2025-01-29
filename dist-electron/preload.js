@@ -18,7 +18,10 @@ electron_1.contextBridge.exposeInMainWorld('electron', {
         onConnected: (callback) => electron_1.ipcRenderer.on('imap:connected', (_) => callback()),
         onDisconnected: (callback) => electron_1.ipcRenderer.on('imap:disconnected', (_) => callback()),
         onError: (callback) => electron_1.ipcRenderer.on('imap:error', (_, error) => callback(error)),
-        onEmailsFetched: (callback) => electron_1.ipcRenderer.on('imap:emails-fetched', (_, emails) => callback(emails))
+        onEmailsFetched: (callback) => electron_1.ipcRenderer.on('imap:emails-fetched', (_, emails) => callback(emails)),
+        // Add these new handlers
+        onProgress: (callback) => electron_1.ipcRenderer.on('imap:progress', (_, progress) => callback(progress)),
+        onStatus: (callback) => electron_1.ipcRenderer.on('imap:status', (_, status) => callback(status))
     }
 });
 //# sourceMappingURL=preload.js.map
