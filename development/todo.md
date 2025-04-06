@@ -71,6 +71,118 @@ The application has a beautiful, zen-like interface matching the target aestheti
 4. **Privacy**: No data should leave the user's control without explicit permission
 5. **Transparency**: Make security features visible and understandable
 
+## Styling Best Practices (CRITICAL)
+
+### Key Styling Rules (LAW)
+
+1. **Never Mix Styling Methods**:
+   - Choose either Tailwind classes OR inline styles - NEVER BOTH
+   - Mixing approaches creates conflicts where some styles override others
+   - Example of BAD practice (DO NOT DO THIS):
+     ```jsx
+     <div 
+       className="w-48 bg-secondary-dark" 
+       style={{ width: '12rem', backgroundColor: '#0F172A' }}
+     >
+     ```
+
+2. **Use Semantically Correct HTML**:
+   - Use proper HTML structure: `nav`, `ul`, `li` for navigation
+   - Use `button` elements for interactive elements (not `div`)
+   - Ensure parent-child relationships are maintained
+   - This improves accessibility and prevents layout bugs
+
+3. **Follow CSS Specificity Rules**:
+   - Be aware of CSS specificity overrides
+   - More specific selectors win over less specific ones
+   - Inline styles > ID selectors > Class selectors > Tag selectors
+   - If styles aren't applying, check for conflicting higher specificity styles
+
+4. **CSS Loading Order Matters**:
+   - Later styles override earlier ones with the same specificity
+   - Import order in JS matters (last import wins)
+   - Keep global CSS overrides at the end of the import chain
+   - Ensure global.css is imported AFTER framework styles (like Tailwind)
+
+5. **Consistent Responsive Approach**:
+   - Use the same responsive system throughout (e.g., Tailwind breakpoints)
+   - Don't mix media query systems
+   - Test all components at multiple screen sizes
+
+### Common Styling Problems
+
+1. **Disappearing Elements**: Often caused by:
+   - Conflicting width/height (one says 0, one says auto)
+   - Negative margins pushing elements offscreen
+   - z-index issues (element is behind others)
+   - Display property conflicts (flex vs block vs none)
+
+2. **Inconsistent Layouts**:
+   - Different styling methods creating inconsistencies
+   - Mixing unit types (px, rem, em, %) unpredictably
+   - Parent element constraints restricting children
+   - Overlapping specificity rules
+
+3. **Style Leakage**:
+   - Global styles affecting components unexpectedly
+   - Parent styles cascading down to children
+   - Multiple overlapping utility classes
+   - CSS reset conflicts
+
+### Debugging Style Issues
+
+1. **Browser Dev Tools**:
+   - Inspect elements to see which styles are applied
+   - Look for styles with strikethrough (they're being overridden)
+   - Check the full CSS cascade to find conflicting rules
+   - Temporarily disable styles to isolate issues
+
+2. **Component Isolation**:
+   - Test components in isolation
+   - Add temporary borders to visualize layout
+   - Use background colors to see element boundaries
+   - Add `outline: 1px solid red` to problematic elements
+
+3. **Progressive Enhancement**:
+   - Start with minimal styling and add incrementally
+   - Test each styling change before adding more
+   - When something breaks, revert to last working state
+   - Document style dependencies between components
+
+### Style Architecture Best Practices
+
+1. **Component-Based Styling**:
+   - Keep styles close to components they affect
+   - Avoid global styles for component-specific issues
+   - Use consistent class naming patterns (BEM, etc.)
+   - Minimize style dependencies between components
+
+2. **Tailwind Usage Guidelines**:
+   - Follow Tailwind's utility-first approach consistently
+   - Group related utilities (positioning, sizing, spacing, etc.)
+   - Extract common patterns to custom components
+   - Use Tailwind's responsive and state variants predictably
+
+3. **Responsive Design**:
+   - Mobile-first approach - design for smallest then scale up
+   - Test UI at multiple breakpoints during development
+   - Use consistent breakpoint definitions across the app
+   - Consider text size, spacing, and layout at all sizes
+
+### Framework Specific Notes
+
+1. **React + Tailwind**:
+   - Extract reusable UI components with consistent styling
+   - Consider component composition over style inheritance
+   - Use clsx/classnames for conditional styling
+   - Avoid style props when using Tailwind (redundant)
+
+2. **Electron Specifics**:
+   - Test on the actual runtime environment
+   - Be aware of OS-specific rendering differences
+   - Account for window size changes and responsiveness
+   - Use OS-native elements when appropriate
+
 ## Tasks for Next Release (v0.1.0)
 
 1. ✅ Fix Gmail PGP search to pull in real encrypted emails
