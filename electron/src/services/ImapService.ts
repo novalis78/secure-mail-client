@@ -4,7 +4,10 @@ import { BrowserWindow } from 'electron';
 import { Stream } from 'stream';
 import { hashSync } from 'bcrypt';
 
-const Store = require('electron-store');
+// Import store from a service manager to avoid direct instantiation
+import { app } from 'electron';
+import * as path from 'path';
+import * as fs from 'fs';
 
 interface ImapConfig {
   host: string;
@@ -20,7 +23,31 @@ interface StoreConfig {
   imapConfig?: Partial<ImapConfig>;
 }
 
-const store = new Store();
+// Create a simple file-based storage instead of using electron-store directly
+const getConfigPath = () => path.join(app.getPath('userData'), 'imap-config.json');
+
+// Simple file-based config functions
+const readConfig = () => {
+  const configPath = getConfigPath();
+  if (fs.existsSync(configPath)) {
+    try {
+      return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    } catch (error) {
+      console.error('Error reading config:', error);
+      return {};
+    }
+  }
+  return {};
+};
+
+const writeConfig = (config: any) => {
+  const configPath = getConfigPath();
+  try {
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+  } catch (error) {
+    console.error('Error writing config:', error);
+  }
+};
 
 export interface ImapEmail {
   id: string;
@@ -52,58 +79,63 @@ export class ImapService {
     host?: string;
     port?: number;
   }) {
-    // Save config (except password) for future use
-    const imapConfig: ImapConfig = {
-      host: config.host || 'imap.gmail.com',
-      port: config.port || 993,
-      tls: true,
-      auth: {
+    try {
+      // Save configuration to our simple file-based storage
+      const imapConfig = {
+        host: config.host || 'imap.gmail.com',
+        port: config.port || 993,
+        user: config.user
+        // We don't store the password in the config file
+      };
+      
+      // Save minimal config (without password)
+      const currentConfig = readConfig();
+      writeConfig({ ...currentConfig, imapConfig });
+      
+      this.mainWindow.webContents.send('imap:status', 'Connecting to server...');
+
+      // Improved IMAP connection with better error handling for Gmail
+      this.imap = new Imap({
         user: config.user,
-        pass: '' // We don't store the password here
-      }
-    };
+        password: config.password,
+        host: config.host || 'imap.gmail.com',
+        port: config.port || 993,
+        tls: true,
+        tlsOptions: { rejectUnauthorized: true },
+        authTimeout: 20000, // Increase timeout for slower connections
+        connTimeout: 30000  // Connection timeout
+      });
 
-    store.set('imapConfig', imapConfig);
-
-    this.mainWindow.webContents.send('imap:status', 'Connecting to server...');
-
-    // Improved IMAP connection with better error handling for Gmail
-    this.imap = new Imap({
-      user: config.user,
-      password: config.password,
-      host: config.host || 'imap.gmail.com',
-      port: config.port || 993,
-      tls: true,
-      tlsOptions: { rejectUnauthorized: true },
-      authTimeout: 20000, // Increase timeout for slower connections
-      connTimeout: 30000  // Connection timeout
-    });
-
-    return new Promise((resolve, reject) => {
-      this.imap.once('ready', () => {
-        this.isConnected = true;
-        this.mainWindow.webContents.send('imap:connected');
-        this.mainWindow.webContents.send('imap:status', 'Connected, fetching emails...');
-        resolve(true);
-        
-        // Start fetching emails automatically after connection
-        this.fetchPGPEmails().catch(err => {
-          this.mainWindow.webContents.send('imap:error', err.message);
+      return new Promise((resolve, reject) => {
+        this.imap.once('ready', () => {
+          this.isConnected = true;
+          this.mainWindow.webContents.send('imap:connected');
+          this.mainWindow.webContents.send('imap:status', 'Connected, fetching emails...');
+          resolve(true);
+          
+          // Start fetching emails automatically after connection
+          this.fetchPGPEmails().catch(err => {
+            this.mainWindow.webContents.send('imap:error', err.message);
+          });
         });
-      });
 
-      this.imap.once('error', (err: Error) => {
-        this.mainWindow.webContents.send('imap:error', err.message);
-        reject(err);
-      });
+        this.imap.once('error', (err: Error) => {
+          this.isConnected = false;
+          this.mainWindow.webContents.send('imap:error', err.message);
+          reject(err);
+        });
 
-      this.imap.once('end', () => {
-        this.isConnected = false;
-        this.mainWindow.webContents.send('imap:disconnected');
-      });
+        this.imap.once('end', () => {
+          this.isConnected = false;
+          this.mainWindow.webContents.send('imap:disconnected');
+        });
 
-      this.imap.connect();
-    });
+        this.imap.connect();
+      });
+    } catch (error) {
+      this.mainWindow.webContents.send('imap:error', error.message);
+      throw error;
+    }
   }
 
   public disconnect() {
@@ -119,25 +151,24 @@ export class ImapService {
 
     return new Promise((resolve, reject) => {
       this.imap.openBox('INBOX', false, (err, box) => {
-        if (err) reject(err);
+        if (err) {
+          reject(err);
+          return;
+        }
 
-        // Enhanced search criteria to find PGP/GPG messages
-        // This combines multiple search strategies to find as many encrypted messages as possible
+        // Simplified search criteria to be more compatible with different IMAP servers
         const searchCriteria = [
           ['OR',
-            ['OR',
-              ['BODY', 'BEGIN PGP MESSAGE'],
-              ['BODY', 'BEGIN PGP SIGNED MESSAGE']
-            ],
-            ['OR',
-              ['SUBJECT', 'PGP'],
-              ['SUBJECT', 'GPG']
-            ]
+            ['BODY', 'BEGIN PGP MESSAGE'],
+            ['BODY', 'BEGIN PGP SIGNED MESSAGE']
           ]
         ];
 
         this.imap.search(searchCriteria, (err, results) => {
-          if (err) reject(err);
+          if (err) {
+            reject(err);
+            return;
+          }
           if (!results || !results.length) {
             this.mainWindow.webContents.send('imap:emails-fetched', []);
             resolve([]);
@@ -151,51 +182,60 @@ export class ImapService {
 
           const messages: ImapEmail[] = [];
           let processedCount = 0;
+          const messagePromises: Promise<void>[] = [];
 
           fetch.on('message', (msg) => {
             msg.on('body', (stream: Stream) => {
-              simpleParser(stream as any, async (err: Error | null, parsed: ParsedMail) => {
-                if (err) reject(err);
+              const messagePromise = new Promise<void>((resolveMsg, rejectMsg) => {
+                simpleParser(stream as any, async (err: Error | null, parsed: ParsedMail) => {
+                  if (err) {
+                    rejectMsg(err);
+                    return;
+                  }
 
-                processedCount++;
-                this.mainWindow.webContents.send('imap:progress', {
-                  current: processedCount,
-                  total: results.length
-                });
-
-                // Enhanced PGP detection logic
-                const text = parsed.text || '';
-                const subject = parsed.subject || '';
-                const html = parsed.html || '';
-                
-                // Check for PGP content in various message parts
-                const isPGP = 
-                  // Look for standard PGP markers
-                  text.includes('BEGIN PGP MESSAGE') ||
-                  text.includes('BEGIN PGP SIGNED MESSAGE') ||
-                  
-                  // Look for patterns in HTML content as well (some clients may format the message)
-                  html.includes('BEGIN PGP MESSAGE') ||
-                  html.includes('BEGIN PGP SIGNED MESSAGE') ||
-                  
-                  // Check for PGP/GPG in subject (common for encrypted messages)
-                  /\bPGP\b/i.test(subject) ||
-                  /\bGPG\b/i.test(subject) ||
-                  /encrypted/i.test(subject);
-
-                if (isPGP) {
-                  messages.push({
-                    id: parsed.messageId || `${Date.now()}-${processedCount}`,
-                    from: parsed.from?.text || 'Unknown',
-                    subject: parsed.subject || 'No Subject',
-                    status: 'NEW',
-                    isEncrypted: true,
-                    date: parsed.date || new Date(),
-                    text: parsed.text || undefined,
-                    html: parsed.html || null
+                  processedCount++;
+                  this.mainWindow.webContents.send('imap:progress', {
+                    current: processedCount,
+                    total: results.length
                   });
-                }
+
+                  // Enhanced PGP detection logic
+                  const text = parsed.text || '';
+                  const subject = parsed.subject || '';
+                  const html = parsed.html || '';
+                  
+                  // Check for PGP content in various message parts
+                  const isPGP = 
+                    // Look for standard PGP markers
+                    text.includes('BEGIN PGP MESSAGE') ||
+                    text.includes('BEGIN PGP SIGNED MESSAGE') ||
+                    
+                    // Look for patterns in HTML content as well (some clients may format the message)
+                    html.includes('BEGIN PGP MESSAGE') ||
+                    html.includes('BEGIN PGP SIGNED MESSAGE') ||
+                    
+                    // Check for PGP/GPG in subject (common for encrypted messages)
+                    /\bPGP\b/i.test(subject) ||
+                    /\bGPG\b/i.test(subject) ||
+                    /encrypted/i.test(subject);
+
+                  if (isPGP) {
+                    messages.push({
+                      id: parsed.messageId || `${Date.now()}-${processedCount}`,
+                      from: parsed.from?.text || 'Unknown',
+                      subject: parsed.subject || 'No Subject',
+                      status: 'NEW',
+                      isEncrypted: true,
+                      date: parsed.date || new Date(),
+                      text: parsed.text || undefined,
+                      html: parsed.html || null
+                    });
+                  }
+                  resolveMsg();
+                });
               });
+              
+              messagePromises.push(messagePromise);
             });
           });
 
@@ -204,9 +244,16 @@ export class ImapService {
           });
 
           fetch.on('end', () => {
-            const sortedMessages = messages.sort((a, b) => b.date.getTime() - a.date.getTime());
-            this.mainWindow.webContents.send('imap:emails-fetched', sortedMessages);
-            resolve(sortedMessages);
+            // Wait for all message parsing to complete before resolving
+            Promise.all(messagePromises)
+              .then(() => {
+                const sortedMessages = messages.sort((a, b) => b.date.getTime() - a.date.getTime());
+                this.mainWindow.webContents.send('imap:emails-fetched', sortedMessages);
+                resolve(sortedMessages);
+              })
+              .catch(err => {
+                reject(err);
+              });
           });
         });
       });
@@ -214,28 +261,40 @@ export class ImapService {
   }
 
   async saveImapConfig(config: ImapConfig) {
-    const validatedConfig = {
-      host: config.host,
-      port: config.port,
-      tls: config.tls,
-      auth: {
-        user: config.auth.user,
-        pass: config.auth.pass
-      }
-    };
+    try {
+      const validatedConfig = {
+        host: config.host,
+        port: config.port,
+        tls: config.tls,
+        auth: {
+          user: config.auth.user,
+          // We'll handle the password securely elsewhere with CredentialService
+        }
+      };
 
-    const encryptedPassword = await encryptPassword(validatedConfig.auth.pass);
+      // Save minimal config to our file-based storage
+      const currentConfig = readConfig();
+      writeConfig({ 
+        ...currentConfig, 
+        imapConfig: {
+          host: validatedConfig.host,
+          port: validatedConfig.port,
+          tls: validatedConfig.tls,
+          user: validatedConfig.auth.user
+        }
+      });
 
-    store.set('imapConfig', {
-      host: validatedConfig.host,
-      port: validatedConfig.port,
-      tls: validatedConfig.tls,
-      auth: {
-        user: validatedConfig.auth.user,
-        pass: encryptedPassword
-      }
-    });
-    
-    return { success: true };
+      return { 
+        success: true,
+        config: {
+          host: validatedConfig.host,
+          port: validatedConfig.port,
+          tls: validatedConfig.tls,
+          user: validatedConfig.auth.user
+        }
+      };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   }
 }

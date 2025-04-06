@@ -3,8 +3,31 @@ import { app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const Store = require('electron-store');
-const store = new Store();
+// Use file-based storage instead of electron-store
+const getConfigPath = () => path.join(app.getPath('userData'), 'pgp-config.json');
+
+// Simple file-based config functions
+const readConfig = () => {
+  const configPath = getConfigPath();
+  if (fs.existsSync(configPath)) {
+    try {
+      return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    } catch (error) {
+      console.error('Error reading PGP config:', error);
+      return {};
+    }
+  }
+  return {};
+};
+
+const writeConfig = (config: any) => {
+  const configPath = getConfigPath();
+  try {
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+  } catch (error) {
+    console.error('Error writing PGP config:', error);
+  }
+};
 
 export interface KeyPair {
   publicKey: string;
@@ -163,7 +186,8 @@ export class PGPService {
     this.savePublicKey(keyPair.fingerprint, keyPair.email, keyPair.publicKey, keyPair.name);
 
     // Save key metadata
-    const keyMetadata = store.get('pgp.keys', {});
+    const config = readConfig();
+    const keyMetadata = config.pgpKeys || {};
     keyMetadata[keyPair.fingerprint] = {
       email: keyPair.email,
       name: keyPair.name,
@@ -171,7 +195,7 @@ export class PGPService {
       isDefault: Object.keys(keyMetadata).length === 0, // First key is default
       hasPrivateKey: true
     };
-    store.set('pgp.keys', keyMetadata);
+    writeConfig({ ...config, pgpKeys: keyMetadata });
   }
 
   /**
@@ -183,7 +207,8 @@ export class PGPService {
     fs.writeFileSync(publicKeyPath, publicKey);
 
     // Save key metadata
-    const keyMetadata = store.get('pgp.keys', {});
+    const config = readConfig();
+    const keyMetadata = config.pgpKeys || {};
     const existing = keyMetadata[fingerprint] || {};
     
     keyMetadata[fingerprint] = {
@@ -194,7 +219,7 @@ export class PGPService {
       hasPrivateKey: existing.hasPrivateKey || false
     };
     
-    store.set('pgp.keys', keyMetadata);
+    writeConfig({ ...config, pgpKeys: keyMetadata });
   }
 
   /**
@@ -227,7 +252,8 @@ export class PGPService {
    * Get the default key pair
    */
   private getDefaultKeyPair(): KeyPair | null {
-    const keyMetadata = store.get('pgp.keys', {}) as Record<string, { 
+    const config = readConfig();
+    const keyMetadata = (config.pgpKeys || {}) as Record<string, { 
       fingerprint: string; 
       email: string;
       name?: string;
@@ -263,7 +289,8 @@ export class PGPService {
    * Get all public keys
    */
   getPublicKeys(): Array<{ fingerprint: string; email: string; name?: string; isDefault?: boolean; hasPrivateKey?: boolean }> {
-    const keyMetadata = store.get('pgp.keys', {}) as Record<string, { 
+    const config = readConfig();
+    const keyMetadata = (config.pgpKeys || {}) as Record<string, { 
       fingerprint: string; 
       email: string; 
       name?: string;
@@ -277,7 +304,8 @@ export class PGPService {
    * Set a key as the default key
    */
   setDefaultKey(fingerprint: string): void {
-    const keyMetadata = store.get('pgp.keys', {});
+    const config = readConfig();
+    const keyMetadata = config.pgpKeys || {};
     
     if (!keyMetadata[fingerprint]) {
       throw new Error(`Key not found for fingerprint: ${fingerprint}`);
@@ -291,14 +319,15 @@ export class PGPService {
     // Set the selected key to default
     keyMetadata[fingerprint].isDefault = true;
     
-    store.set('pgp.keys', keyMetadata);
+    writeConfig({ ...config, pgpKeys: keyMetadata });
   }
 
   /**
    * Delete a key
    */
   deleteKey(fingerprint: string): void {
-    const keyMetadata = store.get('pgp.keys', {});
+    const config = readConfig();
+    const keyMetadata = config.pgpKeys || {};
     
     if (!keyMetadata[fingerprint]) {
       throw new Error(`Key not found for fingerprint: ${fingerprint}`);
@@ -318,23 +347,17 @@ export class PGPService {
     
     // Remove from metadata
     delete keyMetadata[fingerprint];
-    store.set('pgp.keys', keyMetadata);
+    writeConfig({ ...config, pgpKeys: keyMetadata });
     
     // If this was the default key, set a new default if any keys remain
     const remainingKeys = Object.keys(keyMetadata);
     if (remainingKeys.length > 0) {
       // Find a key with a private key to set as default
-      const typedMetadata = keyMetadata as Record<string, { 
-        fingerprint: string; 
-        email: string; 
-        hasPrivateKey?: boolean;
-      }>;
-      
-      const privateKeyOwner = Object.values(typedMetadata)
-        .find(key => key && key.hasPrivateKey);
+      const privateKeyOwner = Object.values(keyMetadata)
+        .find(key => typeof key === 'object' && key && (key as any).hasPrivateKey);
         
-      if (privateKeyOwner && privateKeyOwner.fingerprint) {
-        this.setDefaultKey(privateKeyOwner.fingerprint);
+      if (privateKeyOwner && typeof privateKeyOwner === 'object' && (privateKeyOwner as any).fingerprint) {
+        this.setDefaultKey((privateKeyOwner as any).fingerprint);
       }
     }
   }

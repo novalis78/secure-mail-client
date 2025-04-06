@@ -4,9 +4,27 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
+    <title>Secure Mail Client</title>
+    <link rel="stylesheet" href="/dist/index.css" />
+    <link rel="stylesheet" href="/global.css" />
+    <style>
+      /* Ensure the page has base styling even before our bundle loads */
+      body {
+        background-color: #020617 !important;
+        color: white !important;
+        margin: 0;
+        padding: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      }
+      
+      #root {
+        height: 100%;
+        width: 100%;
+        background-color: #020617;
+      }
+    </style>
   </head>
-  <body>
+  <body class="bg-base-dark">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
