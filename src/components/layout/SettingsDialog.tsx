@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mail, Key, Shield, Usb, Loader, CheckCircle } from 'lucide-react';
+import { X, Mail, Key, Shield, Usb, Loader, CheckCircle, Lock } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 
@@ -20,7 +20,7 @@ const SettingsDialog = ({ isOpen, onClose }: SettingsDialogProps) => {
   return (
     <ErrorBoundary>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-7xl h-3/4 bg-secondary-dark border border-border-dark">
+        <DialogContent className="max-w-2xl h-[85vh] bg-secondary-dark border border-border-dark">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold text-white flex items-center gap-2">
               <Shield className="w-5 h-5" />
