@@ -30,6 +30,12 @@ dist-ssr
 credentials.json
 keystore/
 pgp-keys/
+*.conf
+.config/
+oauth2.keys.json
+client_secret*.json
+token.json
+config.json
 
 # Electron build
 out/
