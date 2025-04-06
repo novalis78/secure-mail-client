@@ -18,7 +18,7 @@ export interface Mail {
 }
 
 function App() {
-  const [activePath, setActivePath] = useState('all');
+  const [activePath, setActivePath] = useState('inbox');
   const [selectedMailId, setSelectedMailId] = useState<string | null>(null);
   const [emails, setEmails] = useState<Mail[]>([]);
   const [isComposing, setIsComposing] = useState(false);
