@@ -161,20 +161,29 @@ const EmailSettings = () => {
       setStatus('connecting');
       
       // First save credentials securely
-      await window.electron.credentials.saveGmail({
+      const credResult = await window.electron.credentials.saveGmail({
         email,
         password
       });
       
+      if (!credResult.success) {
+        throw new Error(credResult.error || 'Failed to save credentials');
+      }
+      
       setCredentialsSaved(true);
+      setStatusMessage('Credentials saved, connecting to IMAP server...');
       
       // Then try to connect
-      await window.electron.imap.connect({
+      const connectResult = await window.electron.imap.connect({
         user: email,
         password: password,
         host: 'imap.gmail.com',
         port: 993
       });
+      
+      if (!connectResult.success) {
+        throw new Error(connectResult.error || 'Failed to connect to IMAP server');
+      }
 
       // Fetch emails will be triggered automatically after connection
     } catch (err) {
