@@ -22,6 +22,18 @@ electron_1.contextBridge.exposeInMainWorld('electron', {
         // Add these new handlers
         onProgress: (callback) => electron_1.ipcRenderer.on('imap:progress', (_, progress) => callback(progress)),
         onStatus: (callback) => electron_1.ipcRenderer.on('imap:status', (_, status) => callback(status))
+    },
+    pgp: {
+        generateKey: (params) => electron_1.ipcRenderer.invoke('pgp:generate-key', params),
+        importPublicKey: (params) => electron_1.ipcRenderer.invoke('pgp:import-public-key', params),
+        getPublicKeys: () => electron_1.ipcRenderer.invoke('pgp:get-public-keys'),
+        setDefaultKey: (params) => electron_1.ipcRenderer.invoke('pgp:set-default-key', params),
+        deleteKey: (params) => electron_1.ipcRenderer.invoke('pgp:delete-key', params),
+        encryptMessage: (params) => electron_1.ipcRenderer.invoke('pgp:encrypt-message', params),
+        decryptMessage: (params) => electron_1.ipcRenderer.invoke('pgp:decrypt-message', params)
+    },
+    yubikey: {
+        detect: () => electron_1.ipcRenderer.invoke('yubikey:detect')
     }
 });
 //# sourceMappingURL=preload.js.map

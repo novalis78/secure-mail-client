@@ -227,8 +227,16 @@ export class PGPService {
    * Get the default key pair
    */
   private getDefaultKeyPair(): KeyPair | null {
-    const keyMetadata = store.get('pgp.keys', {});
-    const defaultKey = Object.values(keyMetadata).find((key: any) => key.isDefault && key.hasPrivateKey);
+    const keyMetadata = store.get('pgp.keys', {}) as Record<string, { 
+      fingerprint: string; 
+      email: string;
+      name?: string;
+      isDefault?: boolean;
+      hasPrivateKey?: boolean;
+    }>;
+    
+    const defaultKey = Object.values(keyMetadata)
+      .find(key => key && key.isDefault && key.hasPrivateKey);
     
     if (!defaultKey) {
       return null;
@@ -254,8 +262,14 @@ export class PGPService {
   /**
    * Get all public keys
    */
-  getPublicKeys(): Array<{ fingerprint: string; email: string; name?: string }> {
-    const keyMetadata = store.get('pgp.keys', {});
+  getPublicKeys(): Array<{ fingerprint: string; email: string; name?: string; isDefault?: boolean; hasPrivateKey?: boolean }> {
+    const keyMetadata = store.get('pgp.keys', {}) as Record<string, { 
+      fingerprint: string; 
+      email: string; 
+      name?: string;
+      isDefault?: boolean;
+      hasPrivateKey?: boolean;
+    }>;
     return Object.values(keyMetadata);
   }
 
@@ -310,8 +324,16 @@ export class PGPService {
     const remainingKeys = Object.keys(keyMetadata);
     if (remainingKeys.length > 0) {
       // Find a key with a private key to set as default
-      const privateKeyOwner = Object.values(keyMetadata).find((key: any) => key.hasPrivateKey);
-      if (privateKeyOwner) {
+      const typedMetadata = keyMetadata as Record<string, { 
+        fingerprint: string; 
+        email: string; 
+        hasPrivateKey?: boolean;
+      }>;
+      
+      const privateKeyOwner = Object.values(typedMetadata)
+        .find(key => key && key.hasPrivateKey);
+        
+      if (privateKeyOwner && privateKeyOwner.fingerprint) {
         this.setDefaultKey(privateKeyOwner.fingerprint);
       }
     }

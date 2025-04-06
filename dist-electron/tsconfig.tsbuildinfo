@@ -1,1 +1,1 @@
-{"root":["../electron/src/main.ts","../electron/src/preload.ts","../electron/src/services/ImapService.ts"],"version":"5.7.3"}
+{"root":["../electron/src/main.ts","../electron/src/preload.ts","../electron/src/services/imapservice.ts","../electron/src/services/pgpservice.ts"],"version":"5.7.3"}
