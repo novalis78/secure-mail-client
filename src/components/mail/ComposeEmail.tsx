@@ -1,5 +1,5 @@
-import { Lock, Send, X, User, Key, Paperclip } from 'lucide-react';
-import { useState } from 'react';
+import { Lock, Send, X, User, Key, Paperclip, Loader } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 interface ComposeEmailProps {
   onCancel?: () => void;
