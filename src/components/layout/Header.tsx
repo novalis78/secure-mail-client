@@ -25,32 +25,97 @@ const Header = ({ status, onSettingsClick }: HeaderProps) => {
   };
 
   return (
-    <div className="bg-base-dark border-b border-border-dark">
+    <div 
+      className="bg-base-dark border-b border-border-dark"
+      style={{ 
+        backgroundColor: '#020617', 
+        borderBottomWidth: '1px',
+        borderBottomStyle: 'solid',
+        borderBottomColor: '#1e293b' 
+      }}
+    >
       {/* Main Header */}
-      <header className="py-4 px-6">
-        <div className="flex items-center">
+      <header 
+        className="py-4 px-6"
+        style={{ 
+          paddingTop: '1rem',
+          paddingBottom: '1rem',
+          paddingLeft: '1.5rem',
+          paddingRight: '1.5rem'
+        }}
+      >
+        <div 
+          className="flex items-center"
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center' 
+          }}
+        >
           {/* Logo */}
-          <div className="flex items-center space-x-3">
-            <div className="text-accent-green">
+          <div 
+            className="flex items-center space-x-3"
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center',
+              gap: '0.75rem'
+            }}
+          >
+            <div 
+              className="text-accent-green"
+              style={{ color: '#10b981' }}
+            >
               <Lock size={20} />
             </div>
-            <h1 className="text-white text-lg font-medium">SECURE MAIL</h1>
+            <h1 
+              className="text-white text-lg font-medium"
+              style={{ 
+                color: 'white',
+                fontSize: '1.125rem',
+                fontWeight: '500'
+              }}
+            >SECURE MAIL</h1>
           </div>
 
           {/* Right side icons */}
-          <div className="ml-auto flex items-center space-x-6">
+          <div 
+            className="ml-auto flex items-center space-x-6"
+            style={{ 
+              marginLeft: 'auto',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1.5rem'
+            }}
+          >
             <StatusIcon status={status} />
             <div title="Key Management">
-              <Key size={20} className="text-gray-400 hover:text-gray-300 cursor-pointer" />
+              <Key 
+                size={20} 
+                className="text-gray-400 hover:text-gray-300 cursor-pointer"
+                style={{ 
+                  color: '#9ca3af', 
+                  cursor: 'pointer'
+                }}
+              />
             </div>
             <div title="Security Status">
-              <ShieldCheck size={20} className="text-gray-400 hover:text-gray-300 cursor-pointer" />
+              <ShieldCheck 
+                size={20} 
+                className="text-gray-400 hover:text-gray-300 cursor-pointer"
+                style={{ 
+                  color: '#9ca3af', 
+                  cursor: 'pointer'
+                }}
+              />
             </div>
             <div title="Settings">
               <Settings 
                 size={20} 
                 className="text-gray-400 hover:text-gray-300 cursor-pointer" 
                 onClick={onSettingsClick}
+                style={{ 
+                  color: '#9ca3af', 
+                  cursor: 'pointer'
+                }}
               />
             </div>
             <HeaderActions onAction={handleAction} />

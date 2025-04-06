@@ -56,12 +56,28 @@ function App() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-base-dark text-white">
+    <div 
+      className="h-screen flex flex-col bg-base-dark text-white"
+      style={{ 
+        height: '100vh', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        backgroundColor: '#020617', 
+        color: 'white' 
+      }}
+    >
       <Header 
         status={connectionStatus} 
         onSettingsClick={() => setShowSettings(true)}
       />
-      <div className="flex flex-1 overflow-hidden">
+      <div 
+        className="flex flex-1 overflow-hidden"
+        style={{ 
+          display: 'flex', 
+          flex: '1', 
+          overflow: 'hidden' 
+        }}
+      >
         <Sidebar 
           activePath={activePath} 
           setActivePath={setActivePath}
@@ -69,7 +85,15 @@ function App() {
         />
         
         {/* Email List Panel */}
-        <div className="w-mail-list border-r border-border-dark">
+        <div 
+          className="w-mail-list border-r border-border-dark"
+          style={{ 
+            width: '320px', 
+            borderRightWidth: '1px', 
+            borderRightStyle: 'solid', 
+            borderRightColor: '#1e293b' 
+          }}
+        >
           <MailList 
             emails={emails}
             selectedMailId={selectedMailId}
@@ -81,13 +105,28 @@ function App() {
         </div>
 
         {/* Main Content Panel */}
-        <main className="flex-1 bg-base-dark">
+        <main 
+          className="flex-1 bg-base-dark"
+          style={{ 
+            flex: '1', 
+            backgroundColor: '#020617' 
+          }}
+        >
           {isComposing ? (
             <ComposeEmail onCancel={() => setIsComposing(false)} />
           ) : selectedEmail ? (
             <MailDetail email={selectedEmail} />
           ) : (
-            <div className="flex items-center justify-center h-full text-gray-500">
+            <div 
+              className="flex items-center justify-center h-full text-gray-500"
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                height: '100%', 
+                color: '#9ca3af'
+              }}
+            >
               <p>Select an email to view its contents</p>
             </div>
           )}

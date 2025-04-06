@@ -18,12 +18,43 @@ const Sidebar = ({ activePath, setActivePath, onComposeClick }: SidebarProps) =>
   ];
 
   return (
-    <aside className="w-48 bg-secondary-dark h-full border-r border-border-dark flex flex-col">
+    <aside 
+      className="w-48 bg-secondary-dark h-full border-r border-border-dark flex flex-col"
+      style={{
+        width: '12rem',
+        backgroundColor: '#0F172A',
+        height: '100%',
+        borderRightWidth: '1px',
+        borderRightStyle: 'solid',
+        borderRightColor: '#1e293b',
+        display: 'flex',
+        flexDirection: 'column'
+      }}
+    >
       {/* Compose Button */}
-      <div className="p-4">
+      <div 
+        className="p-4"
+        style={{ padding: '1rem' }}
+      >
         <button
           onClick={onComposeClick}
           className="w-full bg-accent-green hover:bg-accent-green/90 text-white rounded-lg px-4 py-2 text-sm font-medium flex items-center justify-center space-x-2"
+          style={{
+            width: '100%',
+            backgroundColor: '#10b981',
+            color: 'white',
+            borderRadius: '0.5rem',
+            paddingLeft: '1rem',
+            paddingRight: '1rem',
+            paddingTop: '0.5rem',
+            paddingBottom: '0.5rem',
+            fontSize: '0.875rem',
+            fontWeight: '500',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem'
+          }}
         >
           <PenSquare size={16} />
           <span>Compose</span>

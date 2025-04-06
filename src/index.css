@@ -1,3 +1,130 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Fallback styles to ensure our app is styled even if Tailwind fails */
+:root {
+  --color-base-dark: #020617;
+  --color-secondary-dark: #0F172A;
+  --color-accent-green: #10b981;
+  --color-border-dark: #1e293b;
+  --color-text-white: #ffffff;
+  --color-text-gray-400: #9ca3af;
+  --color-text-gray-300: #d1d5db;
+}
+
+/* Base styles */
+html, body {
+  background-color: var(--color-base-dark);
+  color: var(--color-text-white);
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  height: 100%;
+  width: 100%;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+}
+
+/* Define both Tailwind and direct CSS styles */
+.bg-base-dark, [class*="bg-base-dark"] {
+  background-color: var(--color-base-dark) !important;
+}
+
+.bg-secondary-dark, [class*="bg-secondary-dark"] {
+  background-color: var(--color-secondary-dark) !important;
+}
+
+.text-accent-green, [class*="text-accent-green"] {
+  color: var(--color-accent-green) !important;
+}
+
+.bg-accent-green, [class*="bg-accent-green"] {
+  background-color: var(--color-accent-green) !important;
+}
+
+.border-border-dark, [class*="border-border-dark"] {
+  border-color: var(--color-border-dark) !important;
+}
+
+.text-white, [class*="text-white"] {
+  color: var(--color-text-white) !important;
+}
+
+.text-gray-400, [class*="text-gray-400"] {
+  color: var(--color-text-gray-400) !important;
+}
+
+.text-gray-300, [class*="text-gray-300"] {
+  color: var(--color-text-gray-300) !important;
+}
+
+/* Layout helpers */
+.h-screen, [class*="h-screen"] {
+  height: 100vh !important;
+}
+
+.flex, [class*="flex"] {
+  display: flex !important;
+}
+
+.flex-col, [class*="flex-col"] {
+  flex-direction: column !important;
+}
+
+.flex-1, [class*="flex-1"] {
+  flex: 1 1 0% !important;
+}
+
+.w-48, [class*="w-48"] {
+  width: 12rem !important;
+}
+
+.w-mail-list, [class*="w-mail-list"] {
+  width: 320px !important;
+}
+
+.overflow-hidden, [class*="overflow-hidden"] {
+  overflow: hidden !important;
+}
+
+/* Borders */
+.border-b, [class*="border-b"] {
+  border-bottom-width: 1px !important;
+  border-bottom-style: solid !important;
+}
+
+.border-r, [class*="border-r"] {
+  border-right-width: 1px !important;
+  border-right-style: solid !important;
+}
+
+/* Spacing */
+.py-4, [class*="py-4"] {
+  padding-top: 1rem !important;
+  padding-bottom: 1rem !important;
+}
+
+.px-6, [class*="px-6"] {
+  padding-left: 1.5rem !important;
+  padding-right: 1.5rem !important;
+}
+
+.ml-auto, [class*="ml-auto"] {
+  margin-left: auto !important;
+}
+
+.items-center, [class*="items-center"] {
+  align-items: center !important;
+}
+
+.justify-center, [class*="justify-center"] {
+  justify-content: center !important;
+}
+
+.space-x-3 > * + * {
+  margin-left: 0.75rem !important;
+}
