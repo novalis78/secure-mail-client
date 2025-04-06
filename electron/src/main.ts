@@ -39,7 +39,14 @@ function createWindow() {
   credentialService = new CredentialService();
   imapService = new ImapService(mainWindow);
   pgpService = new PGPService();
-  oauthService = new OAuthService(mainWindow);
+  
+  // Initialize OAuth service with error handling
+  try {
+    oauthService = new OAuthService(mainWindow);
+  } catch (error) {
+    console.error('Error initializing OAuth service:', error);
+    // We'll continue without OAuth services
+  }
 }
 
 // IMAP IPC handlers
@@ -229,9 +236,18 @@ ipcMain.handle('credentials:clear', async () => {
 
 // OAuth IPC handlers
 ipcMain.handle('oauth:check-auth', async () => {
+  if (!oauthService) {
+    console.warn('OAuth service not initialized, oauth:check-auth called');
+    return { 
+      success: false, 
+      isAuthenticated: false, 
+      error: 'OAuth service not available. Check credentials.json file.' 
+    };
+  }
+  
   try {
-    const authStatus = oauthService?.checkAuthentication();
-    return authStatus || { success: false, isAuthenticated: false, error: 'OAuth service not initialized' };
+    const authStatus = oauthService.checkAuthentication();
+    return authStatus;
   } catch (error) {
     console.error('Error checking OAuth authentication:', error);
     return { success: false, isAuthenticated: false, error: error.message };
@@ -239,9 +255,17 @@ ipcMain.handle('oauth:check-auth', async () => {
 });
 
 ipcMain.handle('oauth:authenticate', async () => {
+  if (!oauthService) {
+    console.warn('OAuth service not initialized, oauth:authenticate called');
+    return { 
+      success: false, 
+      error: 'OAuth service not available. Check credentials.json file.' 
+    };
+  }
+  
   try {
-    const authResult = await oauthService?.authenticate();
-    return authResult || { success: false, error: 'OAuth service not initialized' };
+    const authResult = await oauthService.authenticate();
+    return authResult;
   } catch (error) {
     console.error('Error during OAuth authentication:', error);
     return { success: false, error: error.message };
@@ -249,9 +273,17 @@ ipcMain.handle('oauth:authenticate', async () => {
 });
 
 ipcMain.handle('oauth:logout', async () => {
+  if (!oauthService) {
+    console.warn('OAuth service not initialized, oauth:logout called');
+    return { 
+      success: false, 
+      error: 'OAuth service not available. Check credentials.json file.' 
+    };
+  }
+  
   try {
-    const logoutResult = await oauthService?.logout();
-    return logoutResult || { success: false, error: 'OAuth service not initialized' };
+    const logoutResult = await oauthService.logout();
+    return logoutResult;
   } catch (error) {
     console.error('Error during OAuth logout:', error);
     return { success: false, error: error.message };
@@ -259,15 +291,24 @@ ipcMain.handle('oauth:logout', async () => {
 });
 
 ipcMain.handle('oauth:fetch-emails', async () => {
+  if (!oauthService) {
+    console.warn('OAuth service not initialized, oauth:fetch-emails called');
+    return { 
+      success: false, 
+      emails: [],
+      error: 'OAuth service not available. Check credentials.json file.' 
+    };
+  }
+  
   try {
-    const emailsResult = await oauthService?.fetchEmails();
+    const emailsResult = await oauthService.fetchEmails();
     
     // If emails were successfully fetched, also notify via the IMAP service's event system
-    if (emailsResult?.success && emailsResult.emails && mainWindow) {
+    if (emailsResult.success && emailsResult.emails && mainWindow) {
       mainWindow.webContents.send('imap:emails-fetched', emailsResult.emails);
     }
     
-    return emailsResult || { success: false, emails: [], error: 'OAuth service not initialized' };
+    return emailsResult;
   } catch (error) {
     console.error('Error fetching emails with OAuth:', error);
     return { success: false, emails: [], error: error.message };
@@ -275,9 +316,17 @@ ipcMain.handle('oauth:fetch-emails', async () => {
 });
 
 ipcMain.handle('oauth:send-email', async (_, { to, subject, body }) => {
+  if (!oauthService) {
+    console.warn('OAuth service not initialized, oauth:send-email called');
+    return { 
+      success: false, 
+      error: 'OAuth service not available. Check credentials.json file.' 
+    };
+  }
+  
   try {
-    const sendResult = await oauthService?.sendEmail(to, subject, body);
-    return sendResult || { success: false, error: 'OAuth service not initialized' };
+    const sendResult = await oauthService.sendEmail(to, subject, body);
+    return sendResult;
   } catch (error) {
     console.error('Error sending email with OAuth:', error);
     return { success: false, error: error.message };

@@ -23,6 +23,17 @@ electron_1.contextBridge.exposeInMainWorld('electron', {
         onProgress: (callback) => electron_1.ipcRenderer.on('imap:progress', (_, progress) => callback(progress)),
         onStatus: (callback) => electron_1.ipcRenderer.on('imap:status', (_, status) => callback(status))
     },
+    oauth: {
+        // OAuth authentication methods
+        authenticate: () => electron_1.ipcRenderer.invoke('oauth:authenticate'),
+        checkAuth: () => electron_1.ipcRenderer.invoke('oauth:check-auth'),
+        logout: () => electron_1.ipcRenderer.invoke('oauth:logout'),
+        fetchEmails: () => electron_1.ipcRenderer.invoke('oauth:fetch-emails'),
+        sendEmail: (params) => electron_1.ipcRenderer.invoke('oauth:send-email', params),
+        // Code prompt response handlers
+        submitAuthCode: (code) => electron_1.ipcRenderer.send('oauth:code-response', code),
+        cancelAuthCode: () => electron_1.ipcRenderer.send('oauth:code-cancelled')
+    },
     pgp: {
         generateKey: (params) => electron_1.ipcRenderer.invoke('pgp:generate-key', params),
         importPublicKey: (params) => electron_1.ipcRenderer.invoke('pgp:import-public-key', params),

@@ -24,7 +24,20 @@ export class OAuthService {
     
     try {
       // Load credentials from the credentials.json file
-      const credentialsPath = path.join(__dirname, '../../../config/oauth/credentials.json');
+      // In development, the path structure is different than in production
+      let credentialsPath = path.join(__dirname, '../../../config/oauth/credentials.json');
+      
+      // Check if this path exists
+      if (!fs.existsSync(credentialsPath)) {
+        // Try an alternative path for development
+        credentialsPath = path.join(process.cwd(), 'config/oauth/credentials.json');
+        
+        if (!fs.existsSync(credentialsPath)) {
+          throw new Error(`Credentials file not found at ${credentialsPath} or ${path.join(__dirname, '../../../config/oauth/credentials.json')}`);
+        }
+      }
+      
+      console.log('Loading OAuth credentials from:', credentialsPath);
       const credentialsContent = fs.readFileSync(credentialsPath, 'utf8');
       this.credentials = JSON.parse(credentialsContent);
       
@@ -290,21 +303,23 @@ export class OAuthService {
       // Send a message to the renderer to show a code input dialog
       this.mainWindow.webContents.send('oauth:code-prompt');
       
-      // Listen for the code response
-      const cleanup = () => {
-        this.mainWindow.webContents.removeAllListeners('oauth:code-response');
+      // Use ipcMain to listen for responses from the renderer
+      const { ipcMain } = require('electron');
+      
+      const codeResponseHandler = (_event: any, code: string) => {
+        ipcMain.removeListener('oauth:code-response', codeResponseHandler);
+        ipcMain.removeListener('oauth:code-cancelled', codeCancelledHandler);
+        resolve(code);
       };
       
-      this.mainWindow.webContents.on('oauth:code-response', (_, code: string) => {
-        cleanup();
-        resolve(code);
-      });
-      
-      // Also handle cancellation
-      this.mainWindow.webContents.on('oauth:code-cancelled', () => {
-        cleanup();
+      const codeCancelledHandler = () => {
+        ipcMain.removeListener('oauth:code-response', codeResponseHandler);
+        ipcMain.removeListener('oauth:code-cancelled', codeCancelledHandler);
         resolve('');
-      });
+      };
+      
+      ipcMain.once('oauth:code-response', codeResponseHandler);
+      ipcMain.once('oauth:code-cancelled', codeCancelledHandler);
     });
   }
 
@@ -318,9 +333,36 @@ export class OAuthService {
     if (!credentials.expiry_date || credentials.expiry_date <= Date.now()) {
       try {
         console.log('Refreshing expired OAuth token');
-        const { credentials: newCredentials } = await this.oauth2Client.refreshToken(
-          credentials.refresh_token as string
+        
+        // Use the refresh token to get new access token
+        if (!credentials.refresh_token) {
+          throw new Error('No refresh token available');
+        }
+        
+        // Create a new OAuth2Client instance for refreshing the token
+        const { google } = require('googleapis');
+        const refreshClient = new google.auth.OAuth2(
+          this.credentials.installed.client_id,
+          this.credentials.installed.client_secret,
+          this.redirectUri
         );
+        
+        // Set the refresh token
+        refreshClient.setCredentials({
+          refresh_token: credentials.refresh_token
+        });
+        
+        // Get a new access token
+        const response = await refreshClient.getAccessToken();
+        const newToken = response.token;
+        const newExpiry = Date.now() + 3600 * 1000; // Set expiry to 1 hour from now
+        
+        // Create new credentials
+        const newCredentials = {
+          ...credentials,
+          access_token: newToken,
+          expiry_date: newExpiry
+        };
         
         // Update credentials and save
         this.oauth2Client.setCredentials(newCredentials);
