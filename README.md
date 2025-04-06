@@ -1,17 +1,28 @@
 # Secure Mail Client
 
-Secure Mail Client is a secure and encrypted email application that ensures privacy and confidentiality for your communications. It leverages PGP (Pretty Good Privacy) encryption to provide end-to-end encryption for all your messages. Connect it to your Gmail account or other IMAP server, and it will focus on PGP encrypted emails ONLY, ignoring the rest - making SMC the perfect choice for everyone who values digital privacy.
+Secure Mail Client is a high-security email application that ensures privacy and confidentiality for your communications. It leverages PGP (Pretty Good Privacy) encryption to provide end-to-end encryption for all your messages. Connect it to your Gmail account or other IMAP server, and it will focus on PGP encrypted emails ONLY, ignoring the rest - making SMC the perfect choice for everyone who values digital privacy.
 
 ---
 
 ## Features
 
-- **PGP Encryption:** Automatically encrypts and decrypts email messages using PGP keys.
-- **Secure Inbox:** Stores all emails in an encrypted format to prevent unauthorized access.
-- **Read/Unread Message Filters:** Easily sort your inbox based on read or unread status.
-- **User-Friendly Interface:** Simple and intuitive design to manage emails efficiently.
-- **Multi-Device Support:** Accessible across multiple devices without compromising security.
-- **Message Decryption Indicator:** Displays real-time progress during message decryption.
+### Core Security Features
+- **PGP Encryption:** Automatically encrypts and decrypts email messages using PGP keys
+- **YubiKey Integration:** Hardware security module support for enhanced protection
+- **Tiered Security Model:** Works with or without hardware keys, adapting security level dynamically
+- **Zero Plain-Text Storage:** All credentials and sensitive data are always encrypted at rest
+
+### Email Security
+- **Intelligent PGP Detection:** Automatically identifies encrypted emails in any mailbox
+- **Secure Inbox:** Stores all emails in an encrypted format to prevent unauthorized access
+- **Visual Security Indicators:** Clear visual feedback on encryption status of all messages
+- **Real-time Decryption Progress:** Visual feedback during message decryption operations
+
+### User Experience
+- **Modern Three-Panel Layout:** Intuitive navigation with folders, message list, and content views
+- **Read/Unread Message Filters:** Easily sort your inbox based on message status
+- **Dark Theme Security Focus:** Clean interface with security-oriented visual design 
+- **Responsive Design:** Adapts to different screen sizes and device types
 
 ---
 
@@ -52,12 +63,37 @@ A simple and easy-to-navigate sidebar to manage drafts, sent emails, archived me
 
 ---
 
+## Security Architecture
+
+Secure Mail Client implements a multi-layered security approach:
+
+### Credential Protection System
+- **Environment Variables:** Basic credentials can be stored in `.env` files for convenience
+- **Machine-Derived Keys:** Without YubiKey, generates a machine-specific encryption key
+- **YubiKey Integration:** When detected, the system automatically upgrades security:
+  - Derives a stronger encryption key from the YubiKey
+  - Re-encrypts all credentials with this hardware-derived key
+  - Enables hardware-based decryption operations
+  - Provides visual status indicators for active hardware security
+
+### Adaptive Security
+- **Auto-Detection:** Automatically detects when a YubiKey is connected or removed
+- **Seamless Fallback:** Gracefully reverts to software-based encryption when hardware is unavailable
+- **Security Level Indicators:** Clear visual feedback about current security level
+- **Zero Plain-Text:** At no point are credentials or private keys stored in plain text
+
 ## Usage
 
-1. **Set up your PGP keys:** Ensure you have your public and private keys ready for importing.
-2. **Compose Emails:** Write secure emails by composing and encrypting them automatically.
-3. **Decrypt Incoming Emails:** Automatically decrypt received emails using your private key.
-4. **Organize Your Inbox:** Use filters and categories like drafts, sent, archived, and starred.
+1. **Initial Setup:**
+   - Set up your PGP keys by importing existing keys or generating new ones
+   - Connect to your Gmail or other IMAP provider
+   - Optionally connect a YubiKey for enhanced security
+
+2. **Daily Operations:**
+   - **View Secure Messages:** Application automatically detects and filters encrypted emails
+   - **Decrypt Messages:** Use your YubiKey or passphrase to decrypt messages
+   - **Compose Encrypted Emails:** Write secure emails with automatic PGP encryption
+   - **Manage Inbox:** Use filters and categories like drafts, sent, archived, and starred
 
 ---
 

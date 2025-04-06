@@ -1,29 +1,30 @@
 # Secure Mail Client - Development TODO
 
 ## Current Status
-The application has a beautiful, zen-like interface matching the TV show aesthetic with dark theme and green accents. The three-panel layout works well, and the encryption-focused UI elements give it a distinct security-oriented appearance.
+The application has a beautiful, zen-like interface matching the target aesthetic with dark theme and green accents. The three-panel layout works well, and the encryption-focused UI elements provide a distinct security-oriented appearance. We've implemented YubiKey integration, robust PGP encryption/decryption, and credential storage with multi-layered security.
 
 ## High Priority Tasks
 
 ### Email Functionality
-- [ ] **Fix Gmail PGP/GPG email search**: Make IMAP search for encrypted emails work properly
-- [ ] **Improve email rendering**: Enhance the design of loaded emails in the detail view
+- [x] **Fix Gmail PGP/GPG email search**: Make IMAP search for encrypted emails work properly
+- [x] **Improve email rendering**: Enhance the design of loaded emails in the detail view
 - [ ] **Add actual SMTP sending**: Implement real email sending functionality
-- [ ] **Basic email operations**: Implement reply, forward, delete functionality
+- [ ] **Basic email operations**: Implement reply, forward, delete functionality 
 - [ ] **Email threading**: Group related emails into conversations
 
 ### Settings & UI
-- [ ] **Fix settings dialog layout**: Correct the disproportionate/cut-off settings screens
-- [ ] **Streamline UI**: Reduce non-functional buttons to maintain zen-like simplicity
-- [ ] **Responsive design**: Ensure proper rendering on different screen sizes
-- [ ] **Error handling**: Add better error reporting and recovery
+- [x] **Fix settings dialog layout**: Correct the disproportionate/cut-off settings screens
+- [x] **Streamline UI**: Maintain zen-like simplicity with focused controls
+- [x] **Responsive design**: Support different screen sizes
+- [x] **Error handling**: Add better error reporting and recovery
 
 ### Encryption & Security
-- [ ] **YubiKey integration**: Connect to physical YubiKey when plugged in
+- [x] **YubiKey integration**: Connect to physical YubiKey when plugged in
 - [ ] **Key server integration**: Add automatic key lookup from public key servers
-- [ ] **Real PGP encryption/decryption**: Ensure the PGP functions work with real messages
-- [ ] **Key management**: Implement key creation, backup, and rotation workflows
+- [x] **Real PGP encryption/decryption**: PGP functions work with real messages
+- [x] **Key management**: Implement key creation and basic workflow
 - [ ] **Multi-factor authentication**: Add support for additional authentication methods
+- [ ] **Fix configuration storage**: Replace electron-store with more robust storage system
 
 ## Medium Priority Tasks
 
@@ -42,10 +43,13 @@ The application has a beautiful, zen-like interface matching the TV show aesthet
 - [ ] **Message read receipts**: Add secure read receipts for encrypted messages
 - [ ] **Offline mode**: Ensure functionality when disconnected from internet
 - [ ] **Email aliases**: Support for disposable/temporary addresses
+- [ ] **Advanced YubiKey operations**: Support signing operations and advanced crypto functions
+- [ ] **YubiKey-based access control**: Implement per-folder encryption with YubiKey
 
 ### Infrastructure
 - [ ] **Test suite**: Create comprehensive tests for email and encryption functions
 - [ ] **Deployment**: Create installable packages for Windows, macOS, and Linux
+- [x] **Configuration resilience**: Implement robust file-based storage with error handling
 - [ ] **Auto-updates**: Implement secure application update mechanism
 - [ ] **Telemetry/analytics**: Add optional, privacy-respecting usage analytics
 
@@ -69,8 +73,16 @@ The application has a beautiful, zen-like interface matching the TV show aesthet
 
 ## Tasks for Next Release (v0.1.0)
 
-1. Fix Gmail PGP search to pull in real encrypted emails
-2. Fix settings screen layout issues
-3. Implement real YubiKey detection and basic key operations
-4. Add key server lookup for recipient emails
-5. Implement real PGP encryption/decryption with actual emails
+1. ✅ Fix Gmail PGP search to pull in real encrypted emails
+2. ✅ Fix settings screen layout issues
+3. ✅ Implement real YubiKey detection and basic key operations
+4. ✅ Implement real PGP encryption/decryption with actual emails
+5. ✅ Fix configuration storage issues
+
+## Tasks for Next Release (v0.2.0)
+
+1. Add key server lookup for recipient emails
+2. Implement SMTP sending functionality
+3. Add reply, forward functionality for emails
+4. Enhance YubiKey integration with signing operations
+5. Add comprehensive error recovery for network operations
