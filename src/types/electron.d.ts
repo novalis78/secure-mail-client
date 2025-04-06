@@ -105,6 +105,47 @@ export interface YubikeyAPI {
   }>;
 }
 
+export interface Credentials {
+  email?: string;
+  password?: string;
+  host?: string;
+  port?: number;
+  encryption?: 'ssl' | 'tls' | 'none';
+  encryptionMethod?: 'pgp' | 'yubikey' | 'none';
+}
+
+export interface CredentialsAPI {
+  saveGmail: (params: { 
+    email: string; 
+    password: string 
+  }) => Promise<{ 
+    success: boolean; 
+    error?: string 
+  }>;
+  
+  getGmail: () => Promise<{ 
+    success: boolean; 
+    credentials?: Credentials; 
+    error?: string 
+  }>;
+  
+  saveImap: (credentials: Credentials) => Promise<{ 
+    success: boolean; 
+    error?: string 
+  }>;
+  
+  getImap: () => Promise<{ 
+    success: boolean; 
+    credentials?: Credentials; 
+    error?: string 
+  }>;
+  
+  clear: () => Promise<{ 
+    success: boolean; 
+    error?: string 
+  }>;
+}
+
 declare global {
   interface Window {
     electron: {
@@ -112,6 +153,7 @@ declare global {
       imap: ImapAPI;
       pgp: PGPAPI;
       yubikey: YubikeyAPI;
+      credentials: CredentialsAPI;
     };
   }
 }

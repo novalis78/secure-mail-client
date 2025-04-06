@@ -74,8 +74,30 @@ const EmailSettings = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string>('');
+  const [credentialsSaved, setCredentialsSaved] = useState(false);
 
   useEffect(() => {
+    // Load saved credentials if available
+    const loadSavedCredentials = async () => {
+      if (!(window as any).electron?.credentials) {
+        console.log('Credentials functionality not available - are you running in Electron?');
+        return;
+      }
+
+      try {
+        const result = await window.electron.credentials.getGmail();
+        if (result.success && result.credentials) {
+          setEmail(result.credentials.email || '');
+          // We don't set the password here as it's a security risk
+          setCredentialsSaved(!!result.credentials.email);
+        }
+      } catch (err) {
+        console.error('Error loading credentials:', err);
+      }
+    };
+
+    loadSavedCredentials();
+
     if (!(window as any).electron?.imap) {
       console.log('IMAP functionality not available - are you running in Electron?');
       return;
@@ -118,6 +140,16 @@ const EmailSettings = () => {
   }, []);
 
   const handleSave = async () => {
+    if (!email || !password) {
+      setError('Email and password are required');
+      return;
+    }
+
+    if (!(window as any).electron?.credentials) {
+      setError('Credentials functionality only available in Electron environment');
+      return;
+    }
+
     if (!(window as any).electron?.imap) {
       setError('IMAP functionality only available in Electron environment');
       return;
@@ -127,6 +159,16 @@ const EmailSettings = () => {
       setError(null);
       setIsLoading(true);
       setStatus('connecting');
+      
+      // First save credentials securely
+      await window.electron.credentials.saveGmail({
+        email,
+        password
+      });
+      
+      setCredentialsSaved(true);
+      
+      // Then try to connect
       await window.electron.imap.connect({
         user: email,
         password: password,
@@ -165,6 +207,13 @@ const EmailSettings = () => {
           <span>Connected successfully</span>
         </div>
       )}
+      
+      {credentialsSaved && status !== 'connected' && (
+        <div className="bg-blue-500/10 text-blue-500 p-4 rounded-lg flex items-center gap-2">
+          <Lock className="w-4 h-4" />
+          <span>Credentials saved securely</span>
+        </div>
+      )}
 
       <div className="space-y-4">
         <div className="space-y-2">
@@ -179,53 +228,100 @@ const EmailSettings = () => {
         </div>
         <div className="space-y-2">
           <label className="text-sm text-gray-400">App Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-base-dark border border-border-dark rounded-lg px-4 py-2 text-white"
-            placeholder="Gmail App Password"
-          />
-          <p className="text-xs text-gray-500">
-            Use an App Password generated from your Google Account settings
-          </p>
+          <div className="relative">
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-base-dark border border-border-dark rounded-lg px-4 py-2 text-white"
+              placeholder="Gmail App Password"
+            />
+            {credentialsSaved && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-accent-green">
+                <Lock size={16} />
+              </div>
+            )}
+          </div>
+          <div className="flex justify-between items-center">
+            <p className="text-xs text-gray-500">
+              Use an App Password generated from your Google Account settings
+            </p>
+            <a 
+              href="https://support.google.com/accounts/answer/185833"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-accent-green hover:underline"
+            >
+              How to create?
+            </a>
+          </div>
         </div>
         <div className="space-y-2">
           <label className="text-sm text-gray-400">IMAP Settings</label>
           <div className="grid grid-cols-2 gap-4">
-            <input
-              type="text"
-              className="bg-base-dark border border-border-dark rounded-lg px-4 py-2 text-white"
-              placeholder="imap.gmail.com"
-              defaultValue="imap.gmail.com"
-              disabled
-            />
-            <input
-              type="number"
-              className="bg-base-dark border border-border-dark rounded-lg px-4 py-2 text-white"
-              placeholder="993"
-              defaultValue="993"
-              disabled
-            />
+            <div className="relative">
+              <input
+                type="text"
+                className="bg-base-dark border border-border-dark rounded-lg px-4 py-2 text-white"
+                placeholder="imap.gmail.com"
+                defaultValue="imap.gmail.com"
+                disabled
+              />
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                <span className="text-xs">Host</span>
+              </div>
+            </div>
+            <div className="relative">
+              <input
+                type="number"
+                className="bg-base-dark border border-border-dark rounded-lg px-4 py-2 text-white"
+                placeholder="993"
+                defaultValue="993"
+                disabled
+              />
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                <span className="text-xs">Port</span>
+              </div>
+            </div>
           </div>
         </div>
-        <button 
-          onClick={handleSave}
-          disabled={isLoading || !email || !password}
-          className={`bg-accent-green text-white px-4 py-2 rounded-lg hover:bg-accent-green/90 transition-colors
-            ${(isLoading || !email || !password) ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          {isLoading ? (
-            <div className="flex items-center gap-2">
-              <Loader className="w-4 h-4 animate-spin" />
-              <span>Connecting...</span>
-            </div>
-          ) : status === 'connected' ? (
-            'Reconnect'
-          ) : (
-            'Save Configuration'
+        
+        <div className="flex space-x-4">
+          <button 
+            onClick={handleSave}
+            disabled={isLoading || !email || !password}
+            className={`flex-1 bg-accent-green text-white px-4 py-2 rounded-lg hover:bg-accent-green/90 transition-colors
+              ${(isLoading || !email || !password) ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {isLoading ? (
+              <div className="flex items-center justify-center gap-2">
+                <Loader className="w-4 h-4 animate-spin" />
+                <span>Connecting...</span>
+              </div>
+            ) : status === 'connected' ? (
+              'Reconnect'
+            ) : (
+              'Save & Connect'
+            )}
+          </button>
+          
+          {credentialsSaved && (
+            <button 
+              onClick={() => window.electron.credentials.clear()}
+              className="bg-red-500/20 text-red-500 px-4 py-2 rounded-lg hover:bg-red-500/30 transition-colors"
+            >
+              Clear Credentials
+            </button>
           )}
-        </button>
+        </div>
+        
+        <div className="mt-2 bg-secondary-dark p-4 rounded-lg">
+          <h4 className="text-sm font-medium text-white mb-2">Security Information</h4>
+          <p className="text-xs text-gray-400">
+            Your credentials are encrypted locally using modern cryptography. When a YubiKey is connected,
+            it provides an additional layer of security by deriving the encryption key from the hardware token.
+          </p>
+        </div>
       </div>
     </div>
   );

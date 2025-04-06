@@ -67,13 +67,16 @@ export class ImapService {
 
     this.mainWindow.webContents.send('imap:status', 'Connecting to server...');
 
+    // Improved IMAP connection with better error handling for Gmail
     this.imap = new Imap({
       user: config.user,
       password: config.password,
       host: config.host || 'imap.gmail.com',
       port: config.port || 993,
       tls: true,
-      tlsOptions: { rejectUnauthorized: true }
+      tlsOptions: { rejectUnauthorized: true },
+      authTimeout: 20000, // Increase timeout for slower connections
+      connTimeout: 30000  // Connection timeout
     });
 
     return new Promise((resolve, reject) => {
@@ -118,10 +121,18 @@ export class ImapService {
       this.imap.openBox('INBOX', false, (err, box) => {
         if (err) reject(err);
 
+        // Enhanced search criteria to find PGP/GPG messages
+        // This combines multiple search strategies to find as many encrypted messages as possible
         const searchCriteria = [
           ['OR',
-            ['BODY', 'BEGIN PGP MESSAGE'],
-            ['BODY', 'BEGIN PGP SIGNED MESSAGE']
+            ['OR',
+              ['BODY', 'BEGIN PGP MESSAGE'],
+              ['BODY', 'BEGIN PGP SIGNED MESSAGE']
+            ],
+            ['OR',
+              ['SUBJECT', 'PGP'],
+              ['SUBJECT', 'GPG']
+            ]
           ]
         ];
 
@@ -152,8 +163,25 @@ export class ImapService {
                   total: results.length
                 });
 
-                const isPGP = (parsed.text || '').includes('BEGIN PGP MESSAGE') ||
-                            (parsed.text || '').includes('BEGIN PGP SIGNED MESSAGE');
+                // Enhanced PGP detection logic
+                const text = parsed.text || '';
+                const subject = parsed.subject || '';
+                const html = parsed.html || '';
+                
+                // Check for PGP content in various message parts
+                const isPGP = 
+                  // Look for standard PGP markers
+                  text.includes('BEGIN PGP MESSAGE') ||
+                  text.includes('BEGIN PGP SIGNED MESSAGE') ||
+                  
+                  // Look for patterns in HTML content as well (some clients may format the message)
+                  html.includes('BEGIN PGP MESSAGE') ||
+                  html.includes('BEGIN PGP SIGNED MESSAGE') ||
+                  
+                  // Check for PGP/GPG in subject (common for encrypted messages)
+                  /\bPGP\b/i.test(subject) ||
+                  /\bGPG\b/i.test(subject) ||
+                  /encrypted/i.test(subject);
 
                 if (isPGP) {
                   messages.push({

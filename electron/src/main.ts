@@ -3,6 +3,10 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 import { ImapService } from './services/ImapService';
 import { PGPService } from './services/PGPService';
+import { CredentialService } from './services/CredentialService';
+// For loading .env files
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 // Development environment check
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true';
@@ -10,6 +14,7 @@ const isDev = !app.isPackaged || process.env.NODE_ENV === 'development' || proce
 let mainWindow: BrowserWindow | null = null;
 let imapService: ImapService | null = null;
 let pgpService: PGPService | null = null;
+let credentialService: CredentialService | null = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -29,6 +34,7 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
+  credentialService = new CredentialService();
   imapService = new ImapService(mainWindow);
   pgpService = new PGPService();
 }
@@ -142,17 +148,78 @@ ipcMain.handle('yubikey:detect', async () => {
     // In a real implementation, this would interact with the YubiKey hardware
     await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate detection delay
     
+    const yubiKeyInfo = {
+      detected: true,
+      serial: "12345678",
+      version: "5.2.0",
+      pgpKeyId: "0xA1B2C3D4E5F6"
+    };
+    
+    // Update credential service with YubiKey status
+    if (credentialService) {
+      credentialService.setYubiKeyConnected(true, yubiKeyInfo.serial);
+    }
+    
     return { 
       success: true, 
-      yubikey: {
-        detected: true,
-        serial: "12345678",
-        version: "5.2.0",
-        pgpKeyId: "0xA1B2C3D4E5F6"
-      }
+      yubikey: yubiKeyInfo
     };
   } catch (error) {
     console.error('YubiKey detection error:', error);
+    if (credentialService) {
+      credentialService.setYubiKeyConnected(false);
+    }
+    return { success: false, error: error.message };
+  }
+});
+
+// Credential service IPC handlers
+ipcMain.handle('credentials:save-gmail', async (_, { email, password }) => {
+  try {
+    credentialService?.saveGmailCredentials(email, password);
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving Gmail credentials:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('credentials:get-gmail', async () => {
+  try {
+    const credentials = credentialService?.getGmailCredentials();
+    return { success: true, credentials };
+  } catch (error) {
+    console.error('Error getting Gmail credentials:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('credentials:save-imap', async (_, credentials) => {
+  try {
+    credentialService?.saveImapCredentials(credentials);
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving IMAP credentials:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('credentials:get-imap', async () => {
+  try {
+    const credentials = credentialService?.getImapCredentials();
+    return { success: true, credentials };
+  } catch (error) {
+    console.error('Error getting IMAP credentials:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('credentials:clear', async () => {
+  try {
+    credentialService?.clearAllCredentials();
+    return { success: true };
+  } catch (error) {
+    console.error('Error clearing credentials:', error);
     return { success: false, error: error.message };
   }
 });

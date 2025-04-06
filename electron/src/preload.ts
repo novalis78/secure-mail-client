@@ -46,5 +46,17 @@ contextBridge.exposeInMainWorld('electron', {
   },
   yubikey: {
     detect: () => ipcRenderer.invoke('yubikey:detect')
+  },
+  credentials: {
+    saveGmail: (params: { email: string; password: string }) => 
+      ipcRenderer.invoke('credentials:save-gmail', params),
+    getGmail: () => 
+      ipcRenderer.invoke('credentials:get-gmail'),
+    saveImap: (credentials: any) => 
+      ipcRenderer.invoke('credentials:save-imap', credentials),
+    getImap: () => 
+      ipcRenderer.invoke('credentials:get-imap'),
+    clear: () => 
+      ipcRenderer.invoke('credentials:clear')
   }
 });

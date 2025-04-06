@@ -22,3 +22,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Security and credentials
+.env
+.env.*
+!.env.example
+credentials.json
+keystore/
+pgp-keys/
+
+# Electron build
+out/
+dist-electron/
