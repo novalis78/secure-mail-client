@@ -3,6 +3,7 @@ import { X, Mail, Key, Shield, Usb, Loader, CheckCircle, Lock } from 'lucide-rea
 import { Dialog, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import * as DialogPrimitive from "@radix-ui/react-dialog";
+import OAuthCodePrompt from '../mail/OAuthCodePrompt';
 
 // Create a special wider dialog content component just for settings
 const WideDialogContent = React.forwardRef<
@@ -97,6 +98,7 @@ const EmailSettings = () => {
   const [credentialsSaved, setCredentialsSaved] = useState(false);
   const [authMethod, setAuthMethod] = useState<'basic' | 'oauth'>('basic');
   const [isOAuthAuthenticated, setIsOAuthAuthenticated] = useState(false);
+  const [isCodePromptOpen, setIsCodePromptOpen] = useState(false);
 
   useEffect(() => {
     // Load saved credentials if available
@@ -256,7 +258,19 @@ const EmailSettings = () => {
       setStatus('connecting');
       setStatusMessage('Initiating Google OAuth authentication...');
       
+      // Set up listener for code prompt request
+      const codePromptHandler = () => {
+        setIsCodePromptOpen(true);
+      };
+      
+      // Add listener for code prompt
+      window.electron.ipcRenderer.on('oauth:code-prompt', codePromptHandler);
+      
+      // Start authentication process
       const result = await electronAPI.oauth.authenticate();
+      
+      // Remove prompt listener as it's no longer needed
+      window.electron.ipcRenderer.on('oauth:code-prompt', () => {}); // Remove listener
       
       if (result.success) {
         setIsOAuthAuthenticated(true);
@@ -277,6 +291,14 @@ const EmailSettings = () => {
       setError(err instanceof Error ? err.message : 'An unknown error occurred during OAuth authentication');
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  // Handle OAuth code submission
+  const handleOAuthCodeSubmit = (code: string) => {
+    if (code && window.electron?.oauth) {
+      window.electron.oauth.submitAuthCode(code);
+      setIsCodePromptOpen(false);
     }
   };
 
@@ -306,6 +328,13 @@ const EmailSettings = () => {
 
   return (
     <div className="space-y-4">
+      {/* OAuth Code Prompt */}
+      <OAuthCodePrompt 
+        isOpen={isCodePromptOpen}
+        onClose={() => setIsCodePromptOpen(false)}
+        onSubmit={handleOAuthCodeSubmit}
+      />
+      
       <h3 className="text-[11px] font-medium text-white">Gmail Configuration</h3>
       
       {status === 'error' && error && (

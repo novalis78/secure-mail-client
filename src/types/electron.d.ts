@@ -105,6 +105,42 @@ export interface YubikeyAPI {
   }>;
 }
 
+export interface OAuthAPI {
+  authenticate: () => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
+  
+  checkAuth: () => Promise<{
+    success: boolean;
+    isAuthenticated: boolean;
+    error?: string;
+  }>;
+  
+  logout: () => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
+  
+  fetchEmails: () => Promise<{
+    success: boolean;
+    emails?: any[];
+    error?: string;
+  }>;
+  
+  sendEmail: (params: {
+    to: string;
+    subject: string;
+    body: string;
+  }) => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
+  
+  submitAuthCode: (code: string) => void;
+  cancelAuthCode: () => void;
+}
+
 export interface Credentials {
   email?: string;
   password?: string;
@@ -154,6 +190,7 @@ declare global {
       pgp: PGPAPI;
       yubikey: YubikeyAPI;
       credentials: CredentialsAPI;
+      oauth: OAuthAPI;
     };
   }
 }

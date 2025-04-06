@@ -4,6 +4,7 @@ import * as path from 'path';
 import { ImapService } from './services/ImapService';
 import { PGPService } from './services/PGPService';
 import { CredentialService } from './services/CredentialService';
+import { OAuthService } from './services/OAuthService';
 // For loading .env files
 import * as dotenv from 'dotenv';
 dotenv.config();
@@ -15,6 +16,7 @@ let mainWindow: BrowserWindow | null = null;
 let imapService: ImapService | null = null;
 let pgpService: PGPService | null = null;
 let credentialService: CredentialService | null = null;
+let oauthService: OAuthService | null = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -37,6 +39,7 @@ function createWindow() {
   credentialService = new CredentialService();
   imapService = new ImapService(mainWindow);
   pgpService = new PGPService();
+  oauthService = new OAuthService(mainWindow);
 }
 
 // IMAP IPC handlers
@@ -222,6 +225,72 @@ ipcMain.handle('credentials:clear', async () => {
     console.error('Error clearing credentials:', error);
     return { success: false, error: error.message };
   }
+});
+
+// OAuth IPC handlers
+ipcMain.handle('oauth:check-auth', async () => {
+  try {
+    const authStatus = oauthService?.checkAuthentication();
+    return authStatus || { success: false, isAuthenticated: false, error: 'OAuth service not initialized' };
+  } catch (error) {
+    console.error('Error checking OAuth authentication:', error);
+    return { success: false, isAuthenticated: false, error: error.message };
+  }
+});
+
+ipcMain.handle('oauth:authenticate', async () => {
+  try {
+    const authResult = await oauthService?.authenticate();
+    return authResult || { success: false, error: 'OAuth service not initialized' };
+  } catch (error) {
+    console.error('Error during OAuth authentication:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('oauth:logout', async () => {
+  try {
+    const logoutResult = await oauthService?.logout();
+    return logoutResult || { success: false, error: 'OAuth service not initialized' };
+  } catch (error) {
+    console.error('Error during OAuth logout:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('oauth:fetch-emails', async () => {
+  try {
+    const emailsResult = await oauthService?.fetchEmails();
+    
+    // If emails were successfully fetched, also notify via the IMAP service's event system
+    if (emailsResult?.success && emailsResult.emails && mainWindow) {
+      mainWindow.webContents.send('imap:emails-fetched', emailsResult.emails);
+    }
+    
+    return emailsResult || { success: false, emails: [], error: 'OAuth service not initialized' };
+  } catch (error) {
+    console.error('Error fetching emails with OAuth:', error);
+    return { success: false, emails: [], error: error.message };
+  }
+});
+
+ipcMain.handle('oauth:send-email', async (_, { to, subject, body }) => {
+  try {
+    const sendResult = await oauthService?.sendEmail(to, subject, body);
+    return sendResult || { success: false, error: 'OAuth service not initialized' };
+  } catch (error) {
+    console.error('Error sending email with OAuth:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Handle OAuth code responses from the renderer
+ipcMain.on('oauth:code-response', (_, code) => {
+  mainWindow?.webContents.emit('oauth:code-response', code);
+});
+
+ipcMain.on('oauth:code-cancelled', () => {
+  mainWindow?.webContents.emit('oauth:code-cancelled');
 });
 
 app.whenReady().then(createWindow);

@@ -28,6 +28,18 @@ contextBridge.exposeInMainWorld('electron', {
     onStatus: (callback: (status: string) => void) =>
       ipcRenderer.on('imap:status', (_, status) => callback(status))
   },
+  oauth: {
+    // OAuth authentication methods
+    authenticate: () => ipcRenderer.invoke('oauth:authenticate'),
+    checkAuth: () => ipcRenderer.invoke('oauth:check-auth'),
+    logout: () => ipcRenderer.invoke('oauth:logout'),
+    fetchEmails: () => ipcRenderer.invoke('oauth:fetch-emails'),
+    sendEmail: (params: { to: string; subject: string; body: string }) => 
+      ipcRenderer.invoke('oauth:send-email', params),
+    // Code prompt response handlers
+    submitAuthCode: (code: string) => ipcRenderer.send('oauth:code-response', code),
+    cancelAuthCode: () => ipcRenderer.send('oauth:code-cancelled')
+  },
   pgp: {
     generateKey: (params: { name: string; email: string; passphrase: string }) => 
       ipcRenderer.invoke('pgp:generate-key', params),
