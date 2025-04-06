@@ -1,4 +1,4 @@
-import { Lock, Search, Globe, Settings, Key, ShieldCheck } from 'lucide-react';
+import { Lock, Settings, Key, ShieldCheck } from 'lucide-react';
 import StatusIcon from './StatusIcon';
 import HeaderActions from './HeaderActions';
 
@@ -40,14 +40,19 @@ const Header = ({ status, onSettingsClick }: HeaderProps) => {
           {/* Right side icons */}
           <div className="ml-auto flex items-center space-x-6">
             <StatusIcon status={status} />
-            <Key size={20} className="text-gray-400 hover:text-gray-300 cursor-pointer" title="Key Management" />
-            <ShieldCheck size={20} className="text-gray-400 hover:text-gray-300 cursor-pointer" title="Security Status" />
-            <Settings 
-              size={20} 
-              className="text-gray-400 hover:text-gray-300 cursor-pointer" 
-              onClick={onSettingsClick}
-              title="Settings"
-            />
+            <div title="Key Management">
+              <Key size={20} className="text-gray-400 hover:text-gray-300 cursor-pointer" />
+            </div>
+            <div title="Security Status">
+              <ShieldCheck size={20} className="text-gray-400 hover:text-gray-300 cursor-pointer" />
+            </div>
+            <div title="Settings">
+              <Settings 
+                size={20} 
+                className="text-gray-400 hover:text-gray-300 cursor-pointer" 
+                onClick={onSettingsClick}
+              />
+            </div>
             <HeaderActions onAction={handleAction} />
           </div>
         </div>

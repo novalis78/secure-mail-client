@@ -172,10 +172,19 @@ export class CredentialService {
       return null;
     }
     
-    return {
-      ...credentials,
-      password: credentials.password ? this.decrypt(credentials.password) : undefined
-    };
+    try {
+      return {
+        ...credentials,
+        password: credentials.password ? this.decrypt(credentials.password) : undefined
+      };
+    } catch (error) {
+      console.error('Error decrypting Gmail credentials, returning email only:', error);
+      // If we can't decrypt the password, at least return the email
+      return {
+        ...credentials,
+        password: undefined
+      };
+    }
   }
 
   /**
@@ -223,10 +232,19 @@ export class CredentialService {
       return null;
     }
     
-    return {
-      ...credentials,
-      password: credentials.password ? this.decrypt(credentials.password) : undefined
-    };
+    try {
+      return {
+        ...credentials,
+        password: credentials.password ? this.decrypt(credentials.password) : undefined
+      };
+    } catch (error) {
+      console.error('Error decrypting IMAP credentials, returning without password:', error);
+      // If we can't decrypt the password, at least return the other fields
+      return {
+        ...credentials,
+        password: undefined
+      };
+    }
   }
 
   /**

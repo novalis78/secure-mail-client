@@ -92,7 +92,7 @@ const MailDetail = ({ email }: MailDetailProps) => {
         setTimeout(() => {
           setIsDecrypting(false);
           setIsDecrypted(true);
-          setDecryptedContent(result.decryptedMessage);
+          setDecryptedContent(result.decryptedMessage || null);
           setIsUsingYubiKey(false);
           setYubiKeyStatus(null);
         }, 200);
@@ -167,7 +167,7 @@ const MailDetail = ({ email }: MailDetailProps) => {
         setTimeout(() => {
           setIsDecrypting(false);
           setIsDecrypted(true);
-          setDecryptedContent(result.decryptedMessage);
+          setDecryptedContent(result.decryptedMessage || null);
         }, 200);
       } else {
         setDecryptionError(result.error || 'Failed to decrypt message');

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Mail, Key, Shield, Usb, Loader, CheckCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Mail, Key, Shield, Usb, Loader, CheckCircle, Lock } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 
