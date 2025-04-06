@@ -20,11 +20,98 @@ export interface ImapAPI {
   onStatus: (callback: (status: string) => void) => void;
 }
 
+export interface KeyPair {
+  publicKey: string;
+  privateKey: string;
+  fingerprint: string;
+  email: string;
+  name?: string;
+}
+
+export interface PGPAPI {
+  generateKey: (params: { 
+    name: string; 
+    email: string; 
+    passphrase: string 
+  }) => Promise<{ 
+    success: boolean; 
+    keyPair?: KeyPair; 
+    error?: string 
+  }>;
+  
+  importPublicKey: (params: { 
+    armoredKey: string 
+  }) => Promise<{ 
+    success: boolean; 
+    fingerprint?: string; 
+    error?: string 
+  }>;
+  
+  getPublicKeys: () => Promise<{ 
+    success: boolean; 
+    keys?: Array<{ 
+      fingerprint: string; 
+      email: string; 
+      name?: string;
+      isDefault?: boolean;
+      hasPrivateKey?: boolean; 
+    }>;
+    error?: string 
+  }>;
+  
+  setDefaultKey: (params: { 
+    fingerprint: string 
+  }) => Promise<{ 
+    success: boolean; 
+    error?: string 
+  }>;
+  
+  deleteKey: (params: { 
+    fingerprint: string 
+  }) => Promise<{ 
+    success: boolean; 
+    error?: string 
+  }>;
+  
+  encryptMessage: (params: { 
+    message: string; 
+    recipientFingerprints: string[] 
+  }) => Promise<{ 
+    success: boolean; 
+    encryptedMessage?: string; 
+    error?: string 
+  }>;
+  
+  decryptMessage: (params: { 
+    encryptedMessage: string; 
+    passphrase: string 
+  }) => Promise<{ 
+    success: boolean; 
+    decryptedMessage?: string; 
+    error?: string 
+  }>;
+}
+
+export interface YubikeyAPI {
+  detect: () => Promise<{
+    success: boolean;
+    yubikey?: {
+      detected: boolean;
+      serial: string;
+      version: string;
+      pgpKeyId: string;
+    };
+    error?: string;
+  }>;
+}
+
 declare global {
   interface Window {
     electron: {
       ipcRenderer: IpcRenderer;
       imap: ImapAPI;
+      pgp: PGPAPI;
+      yubikey: YubikeyAPI;
     };
   }
 }
