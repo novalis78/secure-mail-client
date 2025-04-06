@@ -23,18 +23,29 @@ export class OAuthService {
     this.tokenFilePath = path.join(process.env.HOME || process.env.USERPROFILE || '', '.secure-mail-client', 'oauth-token.json');
     
     try {
-      // Load credentials from the credentials.json file
-      // In development, the path structure is different than in production
-      let credentialsPath = path.join(__dirname, '../../../config/oauth/credentials.json');
+      // Try multiple possible paths for the credentials file
+      const possiblePaths = [
+        // production/packaged path
+        path.join(__dirname, '../../../config/oauth/credentials.json'),
+        // development path (from project root)
+        path.join(process.cwd(), 'config/oauth/credentials.json'),
+        // absolute path (for debugging)
+        '/Users/novalis78/Projects/secure-mail-client/config/oauth/credentials.json'
+      ];
       
-      // Check if this path exists
-      if (!fs.existsSync(credentialsPath)) {
-        // Try an alternative path for development
-        credentialsPath = path.join(process.cwd(), 'config/oauth/credentials.json');
-        
-        if (!fs.existsSync(credentialsPath)) {
-          throw new Error(`Credentials file not found at ${credentialsPath} or ${path.join(__dirname, '../../../config/oauth/credentials.json')}`);
+      // Find the first path that exists
+      let credentialsPath = '';
+      for (const testPath of possiblePaths) {
+        console.log('Checking path:', testPath);
+        if (fs.existsSync(testPath)) {
+          credentialsPath = testPath;
+          console.log('Found credentials at:', credentialsPath);
+          break;
         }
+      }
+      
+      if (!credentialsPath) {
+        throw new Error(`Credentials file not found. Tried paths: ${possiblePaths.join(', ')}`);
       }
       
       console.log('Loading OAuth credentials from:', credentialsPath);
