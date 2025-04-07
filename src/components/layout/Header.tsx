@@ -28,12 +28,13 @@ const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false 
 
   return (
     <div 
-      className="bg-base-dark border-b border-border-dark"
+      className="bg-[#030b1a] border-b border-[#0c1c3d]"
       style={{ 
-        backgroundColor: '#020617', 
+        background: 'linear-gradient(to bottom, #041024, #030b1a)',
         borderBottomWidth: '1px',
         borderBottomStyle: 'solid',
-        borderBottomColor: '#1e293b' 
+        borderBottomColor: '#0c1c3d',
+        boxShadow: 'inset 0 -1px 0 0 rgba(6, 46, 93, 0.2)'
       }}
     >
       {/* Main Header */}
@@ -63,18 +64,22 @@ const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false 
             }}
           >
             <div 
-              className="text-accent-green"
-              style={{ color: '#10b981' }}
+              className="text-[#12d992]"
+              style={{ 
+                color: '#12d992',
+                filter: 'drop-shadow(0 0 4px rgba(18, 217, 146, 0.3))'
+              }}
             >
-              <Lock size={20} />
+              <Lock size={22} />
             </div>
             <h1 
-              className="text-white text-lg font-bold tracking-wider"
+              className="text-white text-lg font-bold tracking-widest uppercase"
               style={{ 
                 color: 'white',
                 fontSize: '1.125rem',
-                fontWeight: '700',
-                letterSpacing: '0.05em'
+                fontWeight: '800',
+                letterSpacing: '0.12em',
+                textShadow: '0 0 10px rgba(255, 255, 255, 0.1)'
               }}
             >SECURE MAIL</h1>
           </div>

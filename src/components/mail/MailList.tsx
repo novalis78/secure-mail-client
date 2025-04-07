@@ -14,6 +14,7 @@ const MailList = ({ emails = [], selectedMailId, onSelectMail }: MailListProps) 
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [searchQuery, setSearchQuery] = useState('');
+  const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!(window as any).electron?.imap) {
@@ -71,15 +72,16 @@ const MailList = ({ emails = [], selectedMailId, onSelectMail }: MailListProps) 
   }
 
   return (
-    <div className="h-full flex flex-col bg-base-dark">
+    <div className="h-full flex flex-col bg-[#030b1a]">
       {/* Search Bar */}
-      <div className="px-4 py-3 border-b border-border-dark bg-gradient-to-r from-secondary-dark to-base-dark">
+      <div className="px-4 py-3 border-b border-[#0c1c3d] bg-[#041024]" style={{ boxShadow: 'inset 0 -1px 0 0 rgba(6, 46, 93, 0.2)' }}>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#526583]" />
           <input
             type="search"
             placeholder="Search secure emails..."
-            className="w-full bg-base-dark/70 text-white pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent-green/30 border border-border-dark placeholder-gray-400 text-xs"
+            className="w-full bg-[#041024] text-white pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#12d992]/30 border border-[#0c1c3d] placeholder-[#526583] text-xs"
+            style={{ boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.15)' }}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -87,35 +89,38 @@ const MailList = ({ emails = [], selectedMailId, onSelectMail }: MailListProps) 
       </div>
       
       {/* Filter Tabs */}
-      <div className="flex items-center px-6 py-3 border-b border-border-dark bg-secondary-dark">
+      <div className="flex items-center px-5 py-3 border-b border-[#0c1c3d] bg-[#041024]/70">
         <div className="flex space-x-2">
           <button 
-            className={`px-3 py-1.5 rounded-lg text-xs ${
+            className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
               activeFilter === 'all' 
-                ? "bg-accent-green text-white font-medium" 
-                : "bg-base-dark text-gray-400 hover:text-white"
+                ? "bg-[#12d992] text-[#030b1a] shadow-[0_0_10px_rgba(18,217,146,0.3)]" 
+                : "bg-[#0c1c3d] text-[#c1d1f7] hover:bg-[#122c54] hover:text-white"
             }`}
             onClick={() => setActiveFilter('all')}
+            style={activeFilter === 'all' ? { textShadow: '0 1px 0 rgba(0, 0, 0, 0.1)' } : {}}
           >
             All
           </button>
           <button 
-            className={`px-3 py-1.5 rounded-lg text-xs ${
+            className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
               activeFilter === 'read' 
-                ? "bg-accent-green text-white font-medium" 
-                : "bg-base-dark text-gray-400 hover:text-white"
+                ? "bg-[#12d992] text-[#030b1a] shadow-[0_0_10px_rgba(18,217,146,0.3)]" 
+                : "bg-[#0c1c3d] text-[#c1d1f7] hover:bg-[#122c54] hover:text-white"
             }`}
             onClick={() => setActiveFilter('read')}
+            style={activeFilter === 'read' ? { textShadow: '0 1px 0 rgba(0, 0, 0, 0.1)' } : {}}
           >
             Read
           </button>
           <button 
-            className={`px-3 py-1.5 rounded-lg text-xs ${
+            className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
               activeFilter === 'unread' 
-                ? "bg-accent-green text-white font-medium" 
-                : "bg-base-dark text-gray-400 hover:text-white"
+                ? "bg-[#12d992] text-[#030b1a] shadow-[0_0_10px_rgba(18,217,146,0.3)]" 
+                : "bg-[#0c1c3d] text-[#c1d1f7] hover:bg-[#122c54] hover:text-white"
             }`}
             onClick={() => setActiveFilter('unread')}
+            style={activeFilter === 'unread' ? { textShadow: '0 1px 0 rgba(0, 0, 0, 0.1)' } : {}}
           >
             Unread
           </button>
@@ -124,10 +129,10 @@ const MailList = ({ emails = [], selectedMailId, onSelectMail }: MailListProps) 
       
       {/* Loading Indicator */}
       {isLoading && (
-        <div className="flex items-center justify-center py-4 bg-base-dark border-b border-border-dark">
+        <div className="flex items-center justify-center py-4 bg-[#030b1a] border-b border-[#0c1c3d]" style={{ boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.2)' }}>
           <div className="flex items-center space-x-2">
-            <Loader className="h-4 w-4 animate-spin text-accent-green" />
-            <p className="text-xs text-gray-400">
+            <Loader className="h-4 w-4 animate-spin text-[#12d992]" style={{ filter: 'drop-shadow(0 0 3px rgba(18, 217, 146, 0.3))' }} />
+            <p className="text-xs text-[#c1d1f7]" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)' }}>
               Loading emails ({progress.current}/{progress.total})
             </p>
           </div>
@@ -135,24 +140,24 @@ const MailList = ({ emails = [], selectedMailId, onSelectMail }: MailListProps) 
       )}
       
       {/* Mail List */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="space-y-px p-2">
+      <div className="flex-1 overflow-y-auto" style={{ backgroundColor: '#030b1a', backgroundImage: 'linear-gradient(to bottom, #041024 0%, #030b1a 100px)' }}>
+        <div className="space-y-0.5 p-2">
           {filteredEmails.length === 0 ? (
-            <div className="text-center py-8 flex flex-col items-center justify-center h-64">
-              <div className="text-accent-green mb-5 relative">
-                <Lock size={48} className="opacity-70" />
+            <div className="text-center py-12 flex flex-col items-center justify-center h-64">
+              <div className="text-[#12d992] mb-5 relative">
+                <Lock size={48} className="opacity-70" style={{ filter: 'drop-shadow(0 0 8px rgba(18, 217, 146, 0.15))' }} />
                 <div className="absolute inset-0 flex items-center justify-center animate-pulse duration-3000">
-                  <Lock size={32} />
+                  <Lock size={32} style={{ filter: 'drop-shadow(0 0 10px rgba(18, 217, 146, 0.25))' }} />
                 </div>
               </div>
-              <p className="text-gray-300 font-medium text-sm mb-1">No secure messages found</p>
-              <p className="text-gray-500 text-xs max-w-xs">
+              <p className="text-[#c1d1f7] font-medium text-sm mb-1" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)' }}>No secure messages found</p>
+              <p className="text-[#526583] text-xs max-w-xs">
                 {searchQuery 
                   ? "No messages match your current search filters" 
                   : "Your secure inbox is empty or messages still loading"}
               </p>
-              <div className="mt-6 pt-6 border-t border-border-dark w-32 flex justify-center">
-                <Shield size={18} className="text-gray-600" />
+              <div className="mt-8 pt-6 border-t border-[#0c1c3d] w-32 flex justify-center">
+                <Shield size={18} className="text-[#0d2146]" style={{ opacity: 0.7 }} />
               </div>
             </div>
           ) : (
@@ -160,64 +165,116 @@ const MailList = ({ emails = [], selectedMailId, onSelectMail }: MailListProps) 
               <div
                 key={mail.id}
                 onClick={() => onSelectMail(mail.id)}
-                className={`p-3 rounded-xl cursor-pointer transition-all duration-150 hover:translate-x-1 ${
+                onMouseEnter={() => setHoveredItemId(mail.id)}
+                onMouseLeave={() => setHoveredItemId(null)}
+                className={`p-3 my-1.5 rounded-xl cursor-pointer transition-all duration-200 ${
                   selectedMailId === mail.id
-                    ? 'bg-gradient-to-r from-accent-green/30 to-accent-green/10 border-l-2 border-accent-green shadow-sm'
+                    ? 'bg-gradient-to-r from-[#12d992]/20 to-[#0c1c3d]/80 border-l-2 border-[#12d992] shadow-[0_2px_12px_rgba(12,28,61,0.5)]'
                     : mail.status === 'NEW'
-                    ? 'bg-secondary-dark border-l-2 border-yellow-500/50'
-                    : 'hover:bg-hover-dark'
+                    ? 'bg-[#0c1c3d]/70 border-l-2 border-[#f3c677] hover:bg-[#0c1c3d] hover:translate-x-0.5'
+                    : hoveredItemId === mail.id
+                    ? 'bg-[#0c1c3d]/50 hover:translate-x-0.5 shadow-[0_2px_8px_rgba(12,28,61,0.3)]'
+                    : 'bg-[#041024]/30 hover:bg-[#0c1c3d]/50 hover:translate-x-0.5'
                 }`}
+                style={selectedMailId === mail.id ? {
+                  boxShadow: '0 2px 15px rgba(12, 28, 61, 0.5), inset 0 1px 0 0 rgba(193, 209, 247, 0.05)'
+                } : {}}
               >
                 <div className="flex items-center space-x-4">
                   <div className="flex-shrink-0">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                       selectedMailId === mail.id 
-                        ? 'bg-accent-green/20' 
+                        ? 'bg-[#12d992]/20' 
                         : mail.status === 'NEW'
-                        ? 'bg-yellow-500/10'
-                        : 'bg-secondary-dark'
-                    }`}>
+                        ? 'bg-[#f3c677]/10'
+                        : hoveredItemId === mail.id
+                        ? 'bg-[#0c1c3d]'
+                        : 'bg-[#0c1c3d]/60'
+                    }`}
+                    style={selectedMailId === mail.id ? {
+                      boxShadow: 'inset 0 0 0 1px rgba(18, 217, 146, 0.2), 0 0 10px rgba(18, 217, 146, 0.15)'
+                    } : mail.status === 'NEW' ? {
+                      boxShadow: 'inset 0 0 0 1px rgba(243, 198, 119, 0.2), 0 0 10px rgba(243, 198, 119, 0.05)'
+                    } : hoveredItemId === mail.id ? {
+                      boxShadow: 'inset 0 0 0 1px rgba(12, 28, 61, 1), 0 0 5px rgba(12, 28, 61, 0.5)'
+                    } : {}}
+                    >
                       {/* Alternate between Lock and Shield icons for more variation */}
                       {mail.id.charCodeAt(0) % 2 === 0 ? (
                         <Lock className={`h-5 w-5 ${
                           selectedMailId === mail.id 
-                            ? 'text-accent-green' 
+                            ? 'text-[#12d992]' 
                             : mail.status === 'NEW'
-                            ? 'text-yellow-500'
-                            : 'text-gray-400'
-                        }`} />
+                            ? 'text-[#f3c677]'
+                            : hoveredItemId === mail.id
+                            ? 'text-[#c1d1f7]'
+                            : 'text-[#526583]'
+                        }`} 
+                        style={selectedMailId === mail.id ? {
+                          filter: 'drop-shadow(0 0 3px rgba(18, 217, 146, 0.3))'
+                        } : mail.status === 'NEW' ? {
+                          filter: 'drop-shadow(0 0 3px rgba(243, 198, 119, 0.2))'
+                        } : {}}
+                        />
                       ) : (
                         <Shield className={`h-5 w-5 ${
                           selectedMailId === mail.id 
-                            ? 'text-accent-green' 
+                            ? 'text-[#12d992]' 
                             : mail.status === 'NEW'
-                            ? 'text-yellow-500'
-                            : 'text-gray-400'
-                        }`} />
+                            ? 'text-[#f3c677]'
+                            : hoveredItemId === mail.id
+                            ? 'text-[#c1d1f7]'
+                            : 'text-[#526583]'
+                        }`}
+                        style={selectedMailId === mail.id ? {
+                          filter: 'drop-shadow(0 0 3px rgba(18, 217, 146, 0.3))'
+                        } : mail.status === 'NEW' ? {
+                          filter: 'drop-shadow(0 0 3px rgba(243, 198, 119, 0.2))'
+                        } : {}}
+                        />
                       )}
                     </div>
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className={`text-xs font-medium tracking-wide ${
-                      selectedMailId === mail.id ? 'text-white' : 'text-gray-200'
-                    }`}>{mail.from.length > 25 ? mail.from.substring(0, 25) + '...' : mail.from}</p>
+                      selectedMailId === mail.id 
+                        ? 'text-white' 
+                        : hoveredItemId === mail.id
+                        ? 'text-[#c1d1f7]'
+                        : 'text-[#c1d1f7]/80'
+                    }`}
+                    style={selectedMailId === mail.id ? {
+                      textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)'
+                    } : {}}
+                    >{mail.from.length > 25 ? mail.from.substring(0, 25) + '...' : mail.from}</p>
                     <p className={`text-xs truncate font-medium ${
-                      selectedMailId === mail.id ? 'text-gray-300' : 'text-gray-400'
-                    }`}>{mail.subject}</p>
+                      selectedMailId === mail.id 
+                        ? 'text-[#c1d1f7]/90' 
+                        : hoveredItemId === mail.id
+                        ? 'text-[#c1d1f7]/70'
+                        : 'text-[#526583]'
+                    }`}
+                    style={selectedMailId === mail.id ? {
+                      textShadow: '0 1px 1px rgba(0, 0, 0, 0.1)'
+                    } : {}}
+                    >{mail.subject}</p>
                     <div className="flex items-center justify-between mt-1.5">
                       {mail.status === 'NEW' ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-500/10 text-yellow-500">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[#f3c677]/10 text-[#f3c677] border border-[#f3c677]/20"
+                        style={{
+                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)'
+                        }}>
                           New
                         </span>
                       ) : (
-                        <span className="text-gray-500 text-xs">
-                          <svg className="inline-block w-3 h-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <span className="text-[#526583]/80 text-xs flex items-center space-x-1">
+                          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <polyline points="20 6 9 17 4 12"></polyline>
                           </svg>
-                          Read
+                          <span>Read</span>
                         </span>
                       )}
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-[#526583]/80">
                         {mail.date 
                           ? new Date(mail.date instanceof Date ? mail.date : new Date(mail.date)).toLocaleDateString(undefined, {
                               month: 'short',

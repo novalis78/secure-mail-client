@@ -4,13 +4,13 @@
 
 /* Fallback styles to ensure our app is styled even if Tailwind fails */
 :root {
-  --color-base-dark: #020617;
-  --color-secondary-dark: #0F172A;
-  --color-accent-green: #10b981;
-  --color-border-dark: #1e293b;
+  --color-base-dark: #030b1a;
+  --color-secondary-dark: #041024;
+  --color-accent-green: #12d992;
+  --color-border-dark: #0c1c3d;
   --color-text-white: #ffffff;
-  --color-text-gray-400: #9ca3af;
-  --color-text-gray-300: #d1d5db;
+  --color-text-gray-400: #526583;
+  --color-text-gray-300: #c1d1f7;
 }
 
 /* Base styles */
