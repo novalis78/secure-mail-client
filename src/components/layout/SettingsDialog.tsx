@@ -14,7 +14,7 @@ const WideDialogContent = React.forwardRef<
     <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm" />
     <DialogPrimitive.Content
       ref={ref}
-      className="fixed left-[50%] top-[50%] z-50 grid w-[95vw] max-w-[1200px] h-[75vh] translate-x-[-50%] translate-y-[-50%] gap-3 border border-border-dark bg-secondary-dark p-3 shadow-xl duration-200 rounded-lg"
+      className="fixed left-[50%] top-[50%] z-50 flex flex-col w-[95vw] max-w-[1200px] h-[75vh] translate-x-[-50%] translate-y-[-50%] overflow-hidden border border-border-dark bg-secondary-dark p-3 shadow-xl rounded-lg"
       {...props}
     >
       {children}
@@ -55,10 +55,10 @@ const SettingsDialog = ({ isOpen, onClose }: SettingsDialogProps) => {
             </button>
           </div>
 
-          <div className="flex h-full mt-1.5">
+          <div className="flex flex-1 overflow-hidden h-full">
             {/* Fixed width sidebar with absolute positioning to prevent movement */}
-            <div className="w-[150px] min-w-[150px] flex-shrink-0 flex flex-col border-r border-border-dark pr-2">
-              <div className="flex flex-col space-y-1 sticky top-0">
+            <div className="w-[150px] min-w-[150px] flex-shrink-0 overflow-y-auto border-r border-border-dark">
+              <div className="py-1 px-1 flex flex-col space-y-1">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
                   return (
@@ -81,11 +81,13 @@ const SettingsDialog = ({ isOpen, onClose }: SettingsDialogProps) => {
               </div>
             </div>
 
-            {/* Content area with fixed position relative to the sidebar */}
-            <div className="flex-1 p-3 overflow-y-auto pr-4 max-h-[500px]">
-              {activeTab === 'email' && <EmailSettings />}
-              {activeTab === 'keys' && <KeyManagement />}
-              {activeTab === 'yubikey' && <YubiKeySettings />}
+            {/* Content area with independent scrolling */}
+            <div className="flex-1 p-3 overflow-y-auto">
+              <div className="h-full">
+                {activeTab === 'email' && <EmailSettings />}
+                {activeTab === 'keys' && <KeyManagement />}
+                {activeTab === 'yubikey' && <YubiKeySettings />}
+              </div>
             </div>
           </div>
         </WideDialogContent>
