@@ -120,12 +120,12 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-base-dark p-6 overflow-y-auto">
+    <div className="h-full flex flex-col bg-[#030b1a] p-6 overflow-y-auto">
       {/* Email Header */}
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-border-dark">
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#0c1c3d]">
         <div className="flex items-center space-x-3">
-          <Lock className="text-accent-green" size={20} />
-          <span className="text-lg font-medium">New Encrypted Message</span>
+          <Lock className="text-[#12d992]" size={20} style={{ filter: 'drop-shadow(0 0 4px rgba(18, 217, 146, 0.3))' }} />
+          <span className="text-lg font-medium text-white" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)' }}>New Encrypted Message</span>
         </div>
         <button 
           onClick={onCancel}
@@ -136,60 +136,67 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
       </div>
 
       {/* Email Form */}
-      <div className="flex-1 space-y-5">
+      <div className="flex-1 grid grid-rows-[auto_auto_1fr] gap-4">
         {error && (
-          <div className="bg-red-500/10 text-red-500 p-4 rounded-lg">
+          <div className="bg-red-500/10 text-red-500 p-4 rounded-lg mb-2">
             {error}
           </div>
         )}
 
-        {/* To field */}
-        <div className="relative">
-          <div className="absolute left-4 top-4 text-gray-400">
+        {/* Top row with recipient field */}
+        <div className="relative w-full">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#526583] z-10">
             <User size={18} />
           </div>
-          <div className="flex">
+          <div className="flex w-full">
             <input
               type="text"
               placeholder="To:"
               value={recipient}
               onChange={(e) => setRecipient(e.target.value)}
-              className="w-full bg-secondary-dark pl-12 pr-4 py-4 rounded-l-xl focus:outline-none focus:ring-1 focus:ring-accent-green text-gray-100 placeholder-gray-500"
+              className="w-full bg-[#041024] pl-12 pr-4 py-4 rounded-l-lg border border-[#0c1c3d] focus:outline-none focus:ring-1 focus:ring-[#12d992]/30 text-white placeholder-[#526583] text-sm"
+              style={{ boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.1)' }}
             />
             {isSearchingRecipient && (
-              <div className="bg-secondary-dark px-4 py-2 flex items-center rounded-r-xl border-l border-border-dark">
-                <Loader className="w-4 h-4 animate-spin text-accent-green" />
+              <div className="bg-[#041024] px-4 flex items-center justify-center rounded-r-lg border-y border-r border-[#0c1c3d]">
+                <Loader className="w-4 h-4 animate-spin text-[#12d992]" />
               </div>
             )}
             {encryptWithPGP && recipient && recipientKeys.length > 0 && (
-              <div className="bg-secondary-dark px-4 py-2 flex items-center rounded-r-xl border-l border-border-dark">
-                <Lock className="w-4 h-4 text-accent-green" />
+              <div className="bg-[#041024] px-4 flex items-center justify-center rounded-r-lg border-y border-r border-[#0c1c3d]">
+                <Lock className="w-4 h-4 text-[#12d992]" />
               </div>
             )}
           </div>
           {encryptWithPGP && recipient && recipientKeys.length > 0 && (
-            <div className="mt-1 text-xs text-accent-green">
+            <div className="mt-1 text-xs text-[#12d992]" style={{ textShadow: '0 0 5px rgba(18, 217, 146, 0.2)' }}>
               PGP key found for this recipient
             </div>
           )}
         </div>
         
-        {/* Subject field */}
-        <input
-          type="text"
-          placeholder="Subject:"
-          value={subject}
-          onChange={(e) => setSubject(e.target.value)}
-          className="w-full bg-secondary-dark px-6 py-4 rounded-xl focus:outline-none focus:ring-1 focus:ring-accent-green text-gray-100 placeholder-gray-500"
-        />
+        {/* Middle row with subject field */}
+        <div className="w-full">
+          <input
+            type="text"
+            placeholder="Subject:"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            className="w-full bg-[#041024] px-6 py-4 rounded-lg border border-[#0c1c3d] focus:outline-none focus:ring-1 focus:ring-[#12d992]/30 text-white placeholder-[#526583] text-sm"
+            style={{ boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.1)' }}
+          />
+        </div>
         
-        {/* Message body */}
-        <textarea
-          placeholder="Write your message..."
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          className="w-full h-72 bg-secondary-dark px-6 py-4 rounded-xl resize-none focus:outline-none focus:ring-1 focus:ring-accent-green text-gray-100 placeholder-gray-500"
-        />
+        {/* Bottom row with message body */}
+        <div className="w-full h-full min-h-[300px]">
+          <textarea
+            placeholder="Write your message..."
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            className="w-full h-full bg-[#041024] px-6 py-4 rounded-lg border border-[#0c1c3d] resize-none focus:outline-none focus:ring-1 focus:ring-[#12d992]/30 text-white placeholder-[#526583] text-sm"
+            style={{ boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.1)' }}
+          />
+        </div>
 
         {/* Attachments */}
         {attachments.length > 0 && (
@@ -213,22 +220,22 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
       </div>
 
       {/* Email Footer */}
-      <div className="pt-6 mt-4 border-t border-border-dark flex justify-between items-center">
+      <div className="pt-6 mt-4 border-t border-[#0c1c3d] flex justify-between items-center">
         <div className="flex items-center space-x-4">
-          <label className="flex items-center space-x-2 text-sm text-gray-400 cursor-pointer">
+          <label className="flex items-center space-x-2 text-sm text-[#c1d1f7]/80 cursor-pointer">
             <input
               type="checkbox"
               checked={encryptWithPGP}
               onChange={(e) => setEncryptWithPGP(e.target.checked)}
-              className="form-checkbox rounded bg-secondary-dark border-border-dark text-accent-green"
+              className="form-checkbox rounded bg-[#041024] border-[#0c1c3d] text-[#12d992]"
             />
-            <span className="flex items-center gap-1">
-              <Key size={14} />
+            <span className="flex items-center gap-1.5">
+              <Key size={14} className="text-[#12d992]" />
               <span>Encrypt with PGP</span>
             </span>
           </label>
           
-          <label className="text-gray-400 hover:text-gray-300 cursor-pointer">
+          <label className="text-[#c1d1f7]/70 hover:text-[#c1d1f7] cursor-pointer">
             <input
               type="file"
               multiple
@@ -242,9 +249,10 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
         <button 
           onClick={handleSend}
           disabled={isLoading || !recipient || !subject}
-          className={`bg-accent-green text-white px-6 py-3 rounded-lg hover:bg-accent-green/90 transition-colors text-sm font-medium flex items-center space-x-2 ${
-            (isLoading || !recipient || !subject) ? 'opacity-70 cursor-not-allowed' : ''
+          className={`bg-gradient-to-r from-[#12d992] to-[#12d992]/90 text-[#030b1a] px-6 py-3 rounded-lg hover:from-[#12d992]/90 hover:to-[#12d992]/80 transition-all duration-200 text-sm font-bold flex items-center space-x-2 shadow-md ${
+            (isLoading || !recipient || !subject) ? 'opacity-70 cursor-not-allowed' : 'shadow-[#12d992]/20'
           }`}
+          style={{ textShadow: '0 1px 0 rgba(255, 255, 255, 0.1)' }}
         >
           {isLoading ? (
             <>

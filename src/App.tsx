@@ -35,21 +35,52 @@ function App() {
     setIsRefreshing(true);
     
     try {
-      const result = await window.electron.imap.fetchEmails();
+      // First check if we have credentials stored
+      const credentialsResult = await window.electron.credentials.getImap();
       
-      if (!result.success) {
-        console.error('Error refreshing emails:', result.error);
+      // If we have credentials, try to connect and fetch emails
+      if (credentialsResult.success && credentialsResult.credentials) {
+        console.log('Found stored credentials, trying to connect and fetch emails');
         
-        // If we get a connection error, show settings dialog to allow user to reconnect
-        if (result.error?.includes('Not connected to IMAP server')) {
-          console.log('Not connected to IMAP, showing settings dialog');
+        try {
+          // Try to connect first
+          const connectResult = await window.electron.imap.connect({
+            user: credentialsResult.credentials.email,
+            password: credentialsResult.credentials.password,
+            host: credentialsResult.credentials.host || 'imap.gmail.com',
+            port: credentialsResult.credentials.port || 993
+          });
+          
+          if (connectResult.success) {
+            console.log('Connected successfully, fetching emails');
+            // Now fetch emails
+            await window.electron.imap.fetchEmails();
+          } else {
+            console.error('Failed to connect with stored credentials:', connectResult.error);
+            // Only show settings as a last resort if connection fails
+            setShowSettings(true);
+          }
+        } catch (connectError) {
+          console.error('Error connecting with stored credentials:', connectError);
+          setShowSettings(true);
+        }
+      } else {
+        // Only fetch emails (let the backend handle connection if possible)
+        const result = await window.electron.imap.fetchEmails();
+        
+        // If fetching still failed and it's due to connection, show settings
+        if (!result.success && result.error?.includes('Not connected to IMAP server')) {
+          console.log('Connection required but no credentials found, showing settings dialog');
           setShowSettings(true);
         }
       }
     } catch (error) {
-      console.error('Error refreshing emails:', error);
-      // Show settings on any error to let user fix the connection
+      console.error('Error during refresh process:', error);
+      // Only show settings as a last resort
       setShowSettings(true);
+    } finally {
+      // Always reset the refreshing state when done
+      setIsRefreshing(false);
     }
   };
 
