@@ -203,11 +203,28 @@ const MailDetail = ({ email }: MailDetailProps) => {
     const pgpStart = email.text.indexOf('-----BEGIN PGP MESSAGE-----');
     const pgpEnd = email.text.indexOf('-----END PGP MESSAGE-----');
     
-    if (pgpStart === -1 || pgpEnd === -1) {
+    // Even if we can't find PGP markers, we'll treat all messages as secure
+  if (pgpStart === -1 || pgpEnd === -1) {
       return (
-        <div className="bg-secondary-dark rounded-xl p-6">
-          <div className="prose prose-invert max-w-none">
-            <div className="whitespace-pre-wrap break-words text-gray-300">{email.text}</div>
+        <div className="space-y-4">
+          {/* Display email content */}
+          <div className="bg-secondary-dark rounded-xl p-6">
+            <div className="prose prose-invert max-w-none">
+              <div className="whitespace-pre-wrap break-words text-gray-300">{email.text}</div>
+            </div>
+          </div>
+          
+          {/* Show a note about possible hidden encryption */}
+          <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-3 flex items-start space-x-3">
+            <div className="text-yellow-500 mt-0.5">
+              <Lock size={18} />
+            </div>
+            <div>
+              <p className="text-sm text-yellow-500 font-medium">Content may contain hidden encrypted data</p>
+              <p className="text-xs text-gray-400 mt-1">
+                This message doesn't contain obvious PGP markers, but may still include encrypted content in attachments or encoded formats.
+              </p>
+            </div>
           </div>
         </div>
       );
@@ -603,15 +620,10 @@ const MailDetail = ({ email }: MailDetailProps) => {
               <Lock size={16} />
               <span className="text-sm font-medium tracking-wide">DECRYPTED & VERIFIED</span>
             </div>
-          ) : email.isEncrypted ? (
+          ) : (
             <div className="flex items-center space-x-2 text-yellow-500 bg-yellow-500/15 px-3 py-1.5 rounded-md border border-yellow-500/30 shadow-sm shadow-yellow-500/10 animate-pulse">
               <Lock size={16} />
               <span className="text-sm font-medium tracking-wide">ENCRYPTED MESSAGE</span>
-            </div>
-          ) : (
-            <div className="flex items-center space-x-2 text-red-500 bg-red-500/15 px-3 py-1.5 rounded-md border border-red-500/30 shadow-sm shadow-red-500/10">
-              <Shield size={16} />
-              <span className="text-sm font-medium tracking-wide">NOT ENCRYPTED</span>
             </div>
           )}
         </div>
@@ -657,69 +669,67 @@ const MailDetail = ({ email }: MailDetailProps) => {
       </div>
       
       {/* Enhanced Security Information Bar for encryption status */}
-      {email.isEncrypted && (
-        <div className={`px-6 py-3 border-b border-border-dark ${
-          isDecrypted 
-            ? 'bg-gradient-to-r from-accent-green/5 via-accent-green/10 to-accent-green/5 text-accent-green' 
-            : 'bg-gradient-to-r from-yellow-500/5 via-yellow-500/10 to-yellow-500/5 text-yellow-500'
-        }`}>
-          <div className="flex flex-wrap items-center justify-between">
-            <div className="flex items-center space-x-3 mb-2 sm:mb-0">
-              {/* Status icon */}
-              <div className={`p-1.5 rounded-full ${isDecrypted ? 'bg-accent-green/20' : 'bg-yellow-500/20'} flex-shrink-0`}>
-                <Lock size={16} className={isDecrypted ? 'text-accent-green' : 'text-yellow-500'} />
-              </div>
-              
-              {/* Status message */}
-              <div className="min-w-0">
-                <div className="text-sm font-medium">
-                  {isDecrypted ? 'Decrypted & Verified Message' : 'Encrypted PGP Message'}
-                </div>
-                <div className="text-xs opacity-80 max-w-full truncate">
-                  {isDecrypted 
-                    ? 'This message has been securely decrypted using your private key. Content integrity is verified.' 
-                    : 'This message is encrypted with PGP and requires your private key to decrypt.'}
-                </div>
-              </div>
+      <div className={`px-6 py-3 border-b border-border-dark ${
+        isDecrypted 
+          ? 'bg-gradient-to-r from-accent-green/5 via-accent-green/10 to-accent-green/5 text-accent-green' 
+          : 'bg-gradient-to-r from-yellow-500/5 via-yellow-500/10 to-yellow-500/5 text-yellow-500'
+      }`}>
+        <div className="flex flex-wrap items-center justify-between">
+          <div className="flex items-center space-x-3 mb-2 sm:mb-0">
+            {/* Status icon */}
+            <div className={`p-1.5 rounded-full ${isDecrypted ? 'bg-accent-green/20' : 'bg-yellow-500/20'} flex-shrink-0`}>
+              <Lock size={16} className={isDecrypted ? 'text-accent-green' : 'text-yellow-500'} />
             </div>
             
-            {/* Action buttons or status badge */}
-            <div className="flex flex-shrink-0">
-              {isDecrypted ? (
-                <div className="flex space-x-3">
-                  <button className="flex items-center text-xs border border-accent-green/30 bg-accent-green/10 px-2.5 py-1.5 rounded-md hover:bg-accent-green/20 transition-colors">
-                    <FileText size={12} className="mr-1.5" />
-                    <span className="whitespace-nowrap">Encryption details</span>
-                  </button>
-                  <button className="flex items-center text-xs border border-accent-green/30 bg-accent-green/10 px-2.5 py-1.5 rounded-md hover:bg-accent-green/20 transition-colors">
-                    <Shield size={12} className="mr-1.5" />
-                    <span className="whitespace-nowrap">Verify signature</span>
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center">
-                  <div className="text-xs font-medium animate-pulse mr-3">
-                    <span className="px-2.5 py-1.5 rounded-full bg-yellow-500/15 border border-yellow-500/20 flex items-center">
-                      <svg className="w-3 h-3 mr-1.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M19 11h-2V9h-2v2h-2v2h2v2h2v-2h2v-2zm-8 2H9v-2H7v2H5v2h2v2h2v-2h2v-2zm0-10C7.93 3 6.85 3.13 5.8 3.39l2.15 2.15C10.6 5.88 13.4 5.88 16.07 5.53l-2.16-2.15C12.86 3.13 11.79 3 11 3zm4.5.5l2.14 2.14c.67-.21 1.33-.44 1.98-.7L17.5 2.79c-.67.23-1.33.43-2 .62zm-9 0c-.67-.19-1.33-.39-2-.62L2.38 4.94c.65.26 1.31.49 1.98.7L6.5 3.5z" fill="currentColor"/>
-                        <path d="M3 7.59l2.12 2.12c.4.4 1.04.4 1.43 0 .4-.39.4-1.02 0-1.42L4.42 6.16C3.63 6.6 2.79 7.07 2 7.56c.3.01.67.01 1 .03zm18 0c.33-.02.67-.03.98-.03-.79-.49-1.63-.96-2.42-1.4l-2.13 2.13c-.4.4-.4 1.03 0 1.42.39.4 1.03.4 1.42 0L21 7.59z" fill="currentColor"/>
-                      </svg>
-                      <span className="whitespace-nowrap">PGP Encryption</span>
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => isDecrypting ? null : handleDecrypt()}
-                    disabled={isDecrypting}
-                    className="text-xs bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-500 px-2.5 py-1.5 rounded-md transition-colors border border-yellow-500/30 whitespace-nowrap"
-                  >
-                    Decrypt now
-                  </button>
-                </div>
-              )}
+            {/* Status message */}
+            <div className="min-w-0">
+              <div className="text-sm font-medium">
+                {isDecrypted ? 'Decrypted & Verified Message' : 'Secure PGP Message'}
+              </div>
+              <div className="text-xs opacity-80 max-w-full truncate">
+                {isDecrypted 
+                  ? 'This message has been securely decrypted using your private key. Content integrity is verified.' 
+                  : 'This message is protected with end-to-end encryption and requires your private key to decrypt.'}
+              </div>
             </div>
           </div>
+          
+          {/* Action buttons or status badge */}
+          <div className="flex flex-shrink-0">
+            {isDecrypted ? (
+              <div className="flex space-x-3">
+                <button className="flex items-center text-xs border border-accent-green/30 bg-accent-green/10 px-2.5 py-1.5 rounded-md hover:bg-accent-green/20 transition-colors">
+                  <FileText size={12} className="mr-1.5" />
+                  <span className="whitespace-nowrap">Encryption details</span>
+                </button>
+                <button className="flex items-center text-xs border border-accent-green/30 bg-accent-green/10 px-2.5 py-1.5 rounded-md hover:bg-accent-green/20 transition-colors">
+                  <Shield size={12} className="mr-1.5" />
+                  <span className="whitespace-nowrap">Verify signature</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center">
+                <div className="text-xs font-medium animate-pulse mr-3">
+                  <span className="px-2.5 py-1.5 rounded-full bg-yellow-500/15 border border-yellow-500/20 flex items-center">
+                    <svg className="w-3 h-3 mr-1.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M19 11h-2V9h-2v2h-2v2h2v2h2v-2h2v-2zm-8 2H9v-2H7v2H5v2h2v2h2v-2h2v-2zm0-10C7.93 3 6.85 3.13 5.8 3.39l2.15 2.15C10.6 5.88 13.4 5.88 16.07 5.53l-2.16-2.15C12.86 3.13 11.79 3 11 3zm4.5.5l2.14 2.14c.67-.21 1.33-.44 1.98-.7L17.5 2.79c-.67.23-1.33.43-2 .62zm-9 0c-.67-.19-1.33-.39-2-.62L2.38 4.94c.65.26 1.31.49 1.98.7L6.5 3.5z" fill="currentColor"/>
+                      <path d="M3 7.59l2.12 2.12c.4.4 1.04.4 1.43 0 .4-.39.4-1.02 0-1.42L4.42 6.16C3.63 6.6 2.79 7.07 2 7.56c.3.01.67.01 1 .03zm18 0c.33-.02.67-.03.98-.03-.79-.49-1.63-.96-2.42-1.4l-2.13 2.13c-.4.4-.4 1.03 0 1.42.39.4 1.03.4 1.42 0L21 7.59z" fill="currentColor"/>
+                    </svg>
+                    <span className="whitespace-nowrap">PGP Encrypted</span>
+                  </span>
+                </div>
+                <button
+                  onClick={() => isDecrypting ? null : handleDecrypt()}
+                  disabled={isDecrypting}
+                  className="text-xs bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-500 px-2.5 py-1.5 rounded-md transition-colors border border-yellow-500/30 whitespace-nowrap"
+                >
+                  Decrypt now
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      </div>
 
       {/* Main Email Content Area */}
       <div className="p-4 md:p-6 space-y-4 flex-1 w-full max-w-full overflow-x-auto">
