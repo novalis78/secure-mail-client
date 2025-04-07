@@ -58,6 +58,16 @@ const OAuthCodePrompt: React.FC<OAuthCodePromptProps> = ({ isOpen, onClose, onSu
               you will be given a code to paste here.
             </p>
             
+            <div className="mt-2 px-3 py-2 bg-base-dark rounded-lg border border-border-dark">
+              <div className="flex items-center space-x-2">
+                <svg className="w-4 h-4 text-accent-green" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
+                </svg>
+                <span className="text-[10px] text-gray-200 font-medium">OAuth Authentication</span>
+              </div>
+              <p className="text-[9px] text-gray-400 mt-1">Enter the code from Google's OAuth consent screen to authenticate.</p>
+            </div>
+            
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="space-y-1">
                 <label className="text-xs text-gray-400">Authorization Code</label>
