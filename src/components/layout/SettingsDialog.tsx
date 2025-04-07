@@ -369,25 +369,38 @@ const EmailSettings = () => {
         <div className="flex bg-base-dark rounded-lg p-0.5 mb-2 border border-border-dark">
           <button
             onClick={() => setAuthMethod('basic')}
-            className={`flex-1 px-2 py-1 rounded-md transition-all text-[9px] font-medium ${
+            className={`flex-1 px-2 py-1.5 rounded-md transition-all text-[9px] font-medium ${
               authMethod === 'basic'
                 ? 'bg-accent-green text-white shadow-md'
                 : 'text-gray-400 hover:bg-hover-dark hover:text-gray-300'
             }`}
           >
-            Password Authentication
+            <div className="flex items-center justify-center gap-1.5">
+              <Lock className="w-3 h-3" />
+              <span>Password Authentication</span>
+            </div>
           </button>
           <button
             onClick={() => setAuthMethod('oauth')}
-            className={`flex-1 px-2 py-1 rounded-md transition-all text-[9px] font-medium ${
+            className={`flex-1 px-2 py-1.5 rounded-md transition-all text-[9px] font-medium ${
               authMethod === 'oauth'
                 ? 'bg-accent-green text-white shadow-md'
                 : 'text-gray-400 hover:bg-hover-dark hover:text-gray-300'
             }`}
           >
-            Google OAuth
+            <div className="flex items-center justify-center gap-1.5">
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
+              </svg>
+              <span>Google OAuth</span>
+            </div>
           </button>
         </div>
+        {authMethod === 'oauth' && (
+          <div className="text-[9px] text-center text-gray-400 mb-3">
+            Enhanced security with Google's OAuth 2.0 protocol - no password required
+          </div>
+        )}
       </div>
 
       {authMethod === 'basic' ? (
@@ -551,24 +564,27 @@ const EmailSettings = () => {
                 <button
                   onClick={handleOAuthAuthenticate}
                   disabled={isLoading}
-                  className={`w-full bg-accent-green text-white px-3 py-2 rounded-lg hover:bg-accent-green/90 text-xs font-medium ${
+                  className={`w-full bg-white text-gray-700 px-3 py-3 rounded-lg hover:bg-gray-100 text-xs font-medium shadow-md border border-gray-200 ${
                     isLoading ? 'opacity-70 cursor-not-allowed' : ''
                   }`}
                 >
                   {isLoading ? (
                     <div className="flex items-center justify-center gap-2">
                       <Loader className="w-3 h-3 animate-spin" />
-                      <span>Authenticating...</span>
+                      <span>Authenticating with Google...</span>
                     </div>
                   ) : (
                     <div className="flex items-center justify-center gap-2">
-                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12.545,12.151L12.545,12.151c0,1.054,0.855,1.909,1.909,1.909h3.535c-0.228,1.814-1.098,3.42-2.373,4.645 c-1.604,1.604-3.82,2.295-6.004,2.295c-4.619,0-8.358-3.739-8.358-8.358c0-4.619,3.739-8.358,8.358-8.358 c2.183,0,4.398,0.691,6.004,2.295l2.725-2.725C16.334,1.64,13.67,0.5,10.859,0.5C4.943,0.5,0.151,5.293,0.151,11.209 s4.793,10.709,10.709,10.709c4.535,0,9.67-3.193,10.592-9.404c0.03-0.197,0.047-0.399,0.047-0.603l0.001-8.949h-8.954V11.209z"/>
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
                       </svg>
-                      <span>Connect with Google</span>
+                      <span>Sign in with Google</span>
                     </div>
                   )}
                 </button>
+                <div className="text-[9px] text-center text-gray-400 mt-2">
+                  Clicking will open Google's consent screen in your browser
+                </div>
               )}
             </div>
             
@@ -601,16 +617,39 @@ const EmailSettings = () => {
               )}
               
               <div className="mt-3 bg-base-dark rounded-lg p-3 border border-border-dark">
-                <h5 className="text-[10px] font-medium text-gray-300 mb-2">Configuration Guide</h5>
-                <p className="text-[10px] text-gray-400 mb-2">
-                  Set up OAuth in Google Cloud Console:
-                </p>
-                <ul className="list-decimal list-inside text-[10px] text-gray-400 space-y-1 ml-1">
-                  <li>Create an <span className="text-accent-green">OAuth 2.0 Desktop</span> client</li>
-                  <li>Use <span className="font-mono bg-base-dark/60 px-1 py-0.5 rounded text-[9px] text-gray-300">urn:ietf:wg:oauth:2.0:oob</span></li>
-                  <li>Enable <span className="text-accent-green">Gmail API</span> in your project</li>
-                  <li>Copy credentials to <span className="font-mono bg-base-dark/60 px-1 py-0.5 rounded text-[9px] text-gray-300">.env</span> file</li>
-                </ul>
+                <h5 className="text-[10px] font-medium text-white mb-2">OAuth Authentication Flow</h5>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2 text-[9px]">
+                    <div className="flex-shrink-0 rounded-full bg-accent-green/20 text-accent-green text-center w-4 h-4 mt-0.5">1</div>
+                    <div className="text-gray-300">
+                      Click "Sign in with Google" to start OAuth authentication
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 text-[9px]">
+                    <div className="flex-shrink-0 rounded-full bg-accent-green/20 text-accent-green text-center w-4 h-4 mt-0.5">2</div>
+                    <div className="text-gray-300">
+                      Your browser will open to Google's consent screen
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 text-[9px]">
+                    <div className="flex-shrink-0 rounded-full bg-accent-green/20 text-accent-green text-center w-4 h-4 mt-0.5">3</div>
+                    <div className="text-gray-300">
+                      After consenting, Google will provide an authorization code
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 text-[9px]">
+                    <div className="flex-shrink-0 rounded-full bg-accent-green/20 text-accent-green text-center w-4 h-4 mt-0.5">4</div>
+                    <div className="text-gray-300">
+                      Copy the code and paste it in the authorization dialog
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 text-[9px]">
+                    <div className="flex-shrink-0 rounded-full bg-accent-green/20 text-accent-green text-center w-4 h-4 mt-0.5">5</div>
+                    <div className="text-gray-300">
+                      Once authenticated, you'll have secure access to your Gmail
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
