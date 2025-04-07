@@ -126,46 +126,74 @@ const MailList = ({ emails = [], selectedMailId, onSelectMail }: MailListProps) 
       <div className="flex-1 overflow-y-auto">
         <div className="space-y-px p-2">
           {filteredEmails.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
-              {searchQuery 
-                ? "No matching encrypted emails found" 
-                : "No encrypted emails found"}
+            <div className="text-center py-8 flex flex-col items-center justify-center h-48">
+              <div className="text-accent-green mb-3">
+                <Lock size={32} />
+              </div>
+              <p className="text-gray-300 font-medium mb-1">No secure messages found</p>
+              <p className="text-gray-500 text-sm max-w-xs">
+                {searchQuery 
+                  ? "No messages match your current search filters" 
+                  : "Your secure inbox is empty or messages still loading"}
+              </p>
             </div>
           ) : (
             filteredEmails.map(mail => (
               <div
                 key={mail.id}
                 onClick={() => onSelectMail(mail.id)}
-                className={`p-3 rounded-xl cursor-pointer transition-colors ${
+                className={`p-3 rounded-xl cursor-pointer transition-all duration-150 hover:translate-x-1 ${
                   selectedMailId === mail.id
-                    ? 'bg-accent-green/10'
+                    ? 'bg-gradient-to-r from-accent-green/30 to-accent-green/10 border-l-2 border-accent-green shadow-sm'
                     : mail.status === 'NEW'
-                    ? 'bg-secondary-dark'
+                    ? 'bg-secondary-dark border-l-2 border-yellow-500/50'
                     : 'hover:bg-hover-dark'
                 }`}
               >
                 <div className="flex items-center space-x-4">
                   <div className="flex-shrink-0">
-                    <div className="w-10 h-10 rounded-full bg-accent-green/10 flex items-center justify-center">
-                      {mail.isEncrypted && (
-                        <Lock className="h-5 w-5 text-accent-green" />
-                      )}
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      selectedMailId === mail.id 
+                        ? 'bg-accent-green/20' 
+                        : mail.status === 'NEW'
+                        ? 'bg-yellow-500/10'
+                        : 'bg-secondary-dark'
+                    }`}>
+                      <Lock className={`h-5 w-5 ${
+                        selectedMailId === mail.id 
+                          ? 'text-accent-green' 
+                          : mail.status === 'NEW'
+                          ? 'text-yellow-500'
+                          : 'text-gray-400'
+                      }`} />
                     </div>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-100 font-mono">{mail.from}</p>
-                    <p className="text-sm text-gray-400 truncate">{mail.subject}</p>
+                    <p className={`text-sm font-medium ${
+                      selectedMailId === mail.id ? 'text-white' : 'text-gray-200'
+                    }`}>{mail.from}</p>
+                    <p className={`text-sm truncate ${
+                      selectedMailId === mail.id ? 'text-gray-300' : 'text-gray-400'
+                    }`}>{mail.subject}</p>
                     <div className="flex items-center justify-between mt-1.5">
-                      <p className={`text-xs ${
-                        mail.status === 'NEW' 
-                          ? 'text-accent-green font-medium' 
-                          : 'text-gray-400'
-                      }`}>
-                        {mail.status === 'NEW' ? 'NEW' : 'MESSAGE VIEWED'}
-                      </p>
+                      {mail.status === 'NEW' ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-500/10 text-yellow-500">
+                          New
+                        </span>
+                      ) : (
+                        <span className="text-gray-500 text-xs">
+                          <svg className="inline-block w-3 h-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                          </svg>
+                          Read
+                        </span>
+                      )}
                       <p className="text-xs text-gray-500">
                         {mail.date 
-                          ? new Date(mail.date instanceof Date ? mail.date : new Date(mail.date)).toLocaleDateString() 
+                          ? new Date(mail.date instanceof Date ? mail.date : new Date(mail.date)).toLocaleDateString(undefined, {
+                              month: 'short',
+                              day: 'numeric'
+                            })
                           : ''}
                       </p>
                     </div>

@@ -1,13 +1,15 @@
-import { Lock, Settings, Key, ShieldCheck } from 'lucide-react';
+import { Lock, Settings, Key, ShieldCheck, RefreshCw } from 'lucide-react';
 import StatusIcon from './StatusIcon';
 import HeaderActions from './HeaderActions';
 
 interface HeaderProps {
   status: 'secure' | 'warning' | 'error';
   onSettingsClick?: () => void;
+  onRefreshClick?: () => void;
+  isRefreshing?: boolean;
 }
 
-const Header = ({ status, onSettingsClick }: HeaderProps) => {
+const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false }: HeaderProps) => {
   const handleAction = (action: string) => {
     // Handle different actions
     switch (action) {
@@ -87,6 +89,16 @@ const Header = ({ status, onSettingsClick }: HeaderProps) => {
             }}
           >
             <StatusIcon status={status} />
+            <div title="Refresh Emails">
+              <RefreshCw 
+                size={20} 
+                className={`${isRefreshing ? 'animate-spin text-accent-green' : 'text-gray-400 hover:text-gray-300'} cursor-pointer`}
+                onClick={onRefreshClick}
+                style={{ 
+                  cursor: 'pointer'
+                }}
+              />
+            </div>
             <div title="Key Management">
               <Key 
                 size={20} 

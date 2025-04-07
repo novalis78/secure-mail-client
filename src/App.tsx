@@ -24,6 +24,22 @@ function App() {
   const [isComposing, setIsComposing] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'secure' | 'warning' | 'error'>('secure');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const refreshEmails = async () => {
+    if (!(window as any).electron?.imap) {
+      console.log('IMAP functionality not available - are you running in Electron?');
+      return;
+    }
+    
+    setIsRefreshing(true);
+    
+    try {
+      await window.electron.imap.fetchEmails();
+    } catch (error) {
+      console.error('Error refreshing emails:', error);
+    }
+  };
 
   useEffect(() => {
     if (!(window as any).electron?.imap) {
@@ -33,19 +49,27 @@ function App() {
 
     window.electron.imap.onEmailsFetched((fetchedEmails: Mail[]) => {
       setEmails(fetchedEmails);
+      setIsRefreshing(false);
     });
 
     window.electron.imap.onError(() => {
       setConnectionStatus('error');
+      setIsRefreshing(false);
     });
 
     window.electron.imap.onConnected(() => {
       setConnectionStatus('secure');
+      // Auto-refresh emails when connected
+      refreshEmails();
     });
 
     window.electron.imap.onDisconnected(() => {
       setConnectionStatus('warning');
+      setIsRefreshing(false);
     });
+    
+    // Auto-refresh emails on startup
+    refreshEmails();
   }, []);
 
   const selectedEmail = emails.find(email => email.id === selectedMailId);
@@ -60,6 +84,8 @@ function App() {
       <Header 
         status={connectionStatus} 
         onSettingsClick={() => setShowSettings(true)}
+        onRefreshClick={refreshEmails}
+        isRefreshing={isRefreshing}
       />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar 
@@ -71,7 +97,7 @@ function App() {
         {/* Resizable Layout */}
         <div className="flex flex-1 relative">
           {/* Email List Panel */}
-          <div className="flex-shrink-0 w-mail-list min-w-[280px] max-w-[550px] border-r border-border-dark relative">
+          <div className="flex-shrink-0 w-mail-list min-w-[280px] max-w-[550px] border-r border-border-dark flex flex-col h-full overflow-hidden">
             <MailList 
               emails={emails}
               selectedMailId={selectedMailId}
@@ -82,9 +108,21 @@ function App() {
             />
             {/* Resizable Handle */}
             <div 
-              className="absolute top-0 right-0 w-1 h-full cursor-col-resize bg-border-dark/50 hover:bg-accent-green/50 z-10"
+              className="absolute top-0 right-0 w-2 h-full cursor-col-resize hover:bg-accent-green/30 z-10 group"
               onMouseDown={(e) => {
                 e.preventDefault();
+                document.body.style.cursor = 'col-resize';
+                
+                // Add an overlay to capture mouse events during resize
+                const overlay = document.createElement('div');
+                overlay.style.position = 'fixed';
+                overlay.style.top = '0';
+                overlay.style.left = '0';
+                overlay.style.right = '0';
+                overlay.style.bottom = '0';
+                overlay.style.zIndex = '1000';
+                overlay.style.cursor = 'col-resize';
+                document.body.appendChild(overlay);
                 
                 const startX = e.clientX;
                 const listPanel = e.currentTarget.parentElement;
@@ -100,6 +138,8 @@ function App() {
                 };
                 
                 const onMouseUp = () => {
+                  document.body.style.cursor = '';
+                  document.body.removeChild(overlay);
                   document.removeEventListener('mousemove', onMouseMove);
                   document.removeEventListener('mouseup', onMouseUp);
                 };
@@ -107,7 +147,9 @@ function App() {
                 document.addEventListener('mousemove', onMouseMove);
                 document.addEventListener('mouseup', onMouseUp);
               }}
-            />
+            >
+              <div className="invisible group-hover:visible w-0.5 h-full mx-auto bg-accent-green/70"></div>
+            </div>
           </div>
 
           {/* Main Content Panel */}
