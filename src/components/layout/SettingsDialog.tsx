@@ -65,12 +65,14 @@ const SettingsDialog = ({ isOpen, onClose }: SettingsDialogProps) => {
                     onClick={() => setActiveTab(tab.id)}
                     className={`w-full flex items-center gap-1.5 px-2 py-1.5 text-[9px] md:text-xs rounded-l-lg transition-all ${
                       activeTab === tab.id
-                        ? 'bg-accent-green/15 text-accent-green font-medium border-r-2 border-accent-green'
-                        : 'text-gray-400 hover:bg-hover-dark hover:text-white'
+                        ? 'bg-accent-green/30 text-white font-medium border-r-2 border-accent-green border-l border-t border-b border-accent-green/40 shadow-sm'
+                        : 'text-gray-400 hover:bg-hover-dark hover:text-gray-300'
                     }`}
                   >
-                    <Icon className={`w-3 h-3 ${activeTab === tab.id ? 'text-accent-green' : 'text-gray-500'}`} />
-                    {tab.label}
+                    <div className={activeTab === tab.id ? 'text-accent-green' : ''}>
+                      <Icon className={`w-3 h-3`} />
+                    </div>
+                    <span>{tab.label}</span>
                   </button>
                 );
               })}
