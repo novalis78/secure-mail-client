@@ -55,9 +55,10 @@ const SettingsDialog = ({ isOpen, onClose }: SettingsDialogProps) => {
             </button>
           </div>
 
-          <div className="grid grid-cols-[150px_1fr] gap-3 h-full mt-1.5">
-            <div className="flex flex-col border-r border-border-dark pr-2">
-              <div className="flex flex-col space-y-1">
+          <div className="flex h-full mt-1.5">
+            {/* Fixed width sidebar with absolute positioning to prevent movement */}
+            <div className="w-[150px] min-w-[150px] flex-shrink-0 flex flex-col border-r border-border-dark pr-2">
+              <div className="flex flex-col space-y-1 sticky top-0">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
                   return (
@@ -80,7 +81,8 @@ const SettingsDialog = ({ isOpen, onClose }: SettingsDialogProps) => {
               </div>
             </div>
 
-            <div className="p-3 overflow-y-auto pr-4 max-h-[500px]">
+            {/* Content area with fixed position relative to the sidebar */}
+            <div className="flex-1 p-3 overflow-y-auto pr-4 max-h-[500px]">
               {activeTab === 'email' && <EmailSettings />}
               {activeTab === 'keys' && <KeyManagement />}
               {activeTab === 'yubikey' && <YubiKeySettings />}
