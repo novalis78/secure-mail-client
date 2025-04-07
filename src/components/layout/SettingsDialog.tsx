@@ -83,7 +83,7 @@ const SettingsDialog = ({ isOpen, onClose }: SettingsDialogProps) => {
 
             {/* Content area with independent scrolling */}
             <div className="flex-1 p-3 overflow-y-auto">
-              <div className="h-full">
+              <div className="h-full w-full">
                 {activeTab === 'email' && <EmailSettings />}
                 {activeTab === 'keys' && <KeyManagement />}
                 {activeTab === 'yubikey' && <YubiKeySettings />}
@@ -838,187 +838,312 @@ const KeyManagement = () => {
   };
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-[11px] font-medium text-white">PGP Key Management</h3>
+    <div className="space-y-4 w-full">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xs font-medium text-white flex items-center">
+          <Key className="w-3.5 h-3.5 mr-1.5 text-accent-green" />
+          PGP Key Management
+        </h3>
+      </div>
       
       {error && (
-        <div className="bg-red-500/10 text-red-500 p-3 rounded-lg text-xs">
-          {error}
+        <div className="bg-red-500/15 border border-red-500/30 text-red-400 p-3 rounded-lg text-xs mb-4 flex items-start">
+          <div className="mr-2 text-red-400 mt-0.5">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </div>
+          <div>{error}</div>
         </div>
       )}
       
       {success && (
-        <div className="bg-green-500/10 text-green-500 p-3 rounded-lg text-xs">
-          {success}
+        <div className="bg-green-500/15 border border-green-500/30 text-green-400 p-3 rounded-lg text-xs mb-4 flex items-start">
+          <div className="mr-2 text-green-400 mt-0.5">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+          </div>
+          <div>{success}</div>
         </div>
       )}
 
       {showGenerateKey ? (
-        <div className="space-y-3 bg-secondary-dark p-3 rounded-lg">
-          <h4 className="text-xs font-medium text-white">Generate New PGP Key Pair</h4>
+        <div className="bg-secondary-dark/70 rounded-lg border border-border-dark p-4">
+          <h4 className="text-xs font-medium text-white mb-3 flex items-center">
+            <svg className="w-3.5 h-3.5 mr-1.5 text-accent-green" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            Generate New PGP Key Pair
+          </h4>
           
-          <div className="space-y-2 mt-2">
-            <div className="space-y-1">
-              <label className="text-xs text-gray-400">Full Name</label>
-              <input
-                type="text"
-                value={newKeyData.name}
-                onChange={(e) => setNewKeyData({...newKeyData, name: e.target.value})}
-                className="w-full bg-base-dark border border-border-dark rounded-lg px-3 py-1.5 text-white text-xs"
-                placeholder="Your Full Name"
-              />
-            </div>
-            
-            <div className="space-y-1">
-              <label className="text-xs text-gray-400">Email Address</label>
-              <input
-                type="email"
-                value={newKeyData.email}
-                onChange={(e) => setNewKeyData({...newKeyData, email: e.target.value})}
-                className="w-full bg-base-dark border border-border-dark rounded-lg px-3 py-1.5 text-white text-xs"
-                placeholder="your.email@example.com"
-              />
-            </div>
-            
-            <div className="space-y-1">
-              <label className="text-xs text-gray-400">Passphrase</label>
-              <input
-                type="password"
-                value={newKeyData.passphrase}
-                onChange={(e) => setNewKeyData({...newKeyData, passphrase: e.target.value})}
-                className="w-full bg-base-dark border border-border-dark rounded-lg px-3 py-1.5 text-white text-xs"
-                placeholder="Strong passphrase for your key"
-              />
-            </div>
-            
-            <div className="space-y-1">
-              <label className="text-xs text-gray-400">Confirm Passphrase</label>
-              <input
-                type="password"
-                value={newKeyData.confirmPassphrase}
-                onChange={(e) => setNewKeyData({...newKeyData, confirmPassphrase: e.target.value})}
-                className="w-full bg-base-dark border border-border-dark rounded-lg px-3 py-1.5 text-white text-xs"
-                placeholder="Confirm passphrase"
-              />
+          <div className="space-y-3 mt-2">
+            <div className="bg-base-dark/70 rounded-lg p-3 border border-border-dark">
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-300 font-medium">Full Name</label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      value={newKeyData.name}
+                      onChange={(e) => setNewKeyData({...newKeyData, name: e.target.value})}
+                      className="w-full bg-base-dark border border-border-dark rounded-lg px-3 py-2 pl-10 text-white text-xs focus:border-accent-green/50 focus:ring-1 focus:ring-accent-green/20 focus:outline-none transition-all"
+                      placeholder="Your Full Name"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-300 font-medium">Email Address</label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                        <polyline points="22,6 12,13 2,6" />
+                      </svg>
+                    </div>
+                    <input
+                      type="email"
+                      value={newKeyData.email}
+                      onChange={(e) => setNewKeyData({...newKeyData, email: e.target.value})}
+                      className="w-full bg-base-dark border border-border-dark rounded-lg px-3 py-2 pl-10 text-white text-xs focus:border-accent-green/50 focus:ring-1 focus:ring-accent-green/20 focus:outline-none transition-all"
+                      placeholder="your.email@example.com"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-300 font-medium">Passphrase</label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                    </div>
+                    <input
+                      type="password"
+                      value={newKeyData.passphrase}
+                      onChange={(e) => setNewKeyData({...newKeyData, passphrase: e.target.value})}
+                      className="w-full bg-base-dark border border-border-dark rounded-lg px-3 py-2 pl-10 text-white text-xs focus:border-accent-green/50 focus:ring-1 focus:ring-accent-green/20 focus:outline-none transition-all"
+                      placeholder="Strong passphrase for your key"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-300 font-medium">Confirm Passphrase</label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M9 12l2 2 4-4" />
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                    </div>
+                    <input
+                      type="password"
+                      value={newKeyData.confirmPassphrase}
+                      onChange={(e) => setNewKeyData({...newKeyData, confirmPassphrase: e.target.value})}
+                      className="w-full bg-base-dark border border-border-dark rounded-lg px-3 py-2 pl-10 text-white text-xs focus:border-accent-green/50 focus:ring-1 focus:ring-accent-green/20 focus:outline-none transition-all"
+                      placeholder="Confirm passphrase"
+                    />
+                  </div>
+                  <p className="text-[9px] text-gray-500 mt-1 ml-1">Use a strong, unique passphrase you can remember</p>
+                </div>
+              </div>
             </div>
           </div>
           
-          <div className="flex space-x-2 mt-3">
+          <div className="flex space-x-3 mt-4">
             <button
               onClick={handleGenerateKey}
               disabled={isLoading}
-              className={`bg-accent-green text-white px-3 py-1.5 rounded-lg hover:bg-accent-green/90 flex-1 text-xs ${
+              className={`bg-accent-green text-white px-4 py-2 rounded-lg hover:bg-accent-green/90 flex-1 text-xs font-medium flex items-center justify-center gap-2 ${
                 isLoading ? 'opacity-70 cursor-not-allowed' : ''
               }`}
             >
               {isLoading ? (
-                <div className="flex items-center justify-center space-x-2">
+                <>
                   <Loader className="w-3 h-3 animate-spin" />
                   <span>Generating...</span>
-                </div>
+                </>
               ) : (
-                'Generate Key Pair'
+                <>
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                  <span>Generate Secure Key Pair</span>
+                </>
               )}
             </button>
             
             <button
               onClick={() => setShowGenerateKey(false)}
-              className="bg-gray-700 text-white px-3 py-1.5 rounded-lg hover:bg-gray-600 text-xs"
+              className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 text-xs font-medium border border-gray-600"
             >
               Cancel
             </button>
           </div>
         </div>
       ) : (
-        <div className="flex space-x-2">
-          <button
-            onClick={() => setShowGenerateKey(true)}
-            className="bg-accent-green text-white px-3 py-1.5 rounded-lg hover:bg-accent-green/90 text-xs"
-          >
-            Generate New Key Pair
-          </button>
+        <div className="bg-secondary-dark/70 rounded-lg border border-border-dark p-4">
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="text-xs font-medium text-white flex items-center">
+              <svg className="w-3.5 h-3.5 mr-1.5 text-accent-green" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 11h-4l-3 9L9 3l-3 9H2" />
+              </svg>
+              PGP Key Actions
+            </h4>
+          </div>
+          
+          <div className="flex space-x-3">
+            <button
+              onClick={() => setShowGenerateKey(true)}
+              className="bg-accent-green text-white px-4 py-2 rounded-lg hover:bg-accent-green/90 text-xs font-medium flex items-center"
+            >
+              <svg className="w-3.5 h-3.5 mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="16" />
+                <line x1="8" y1="12" x2="16" y2="12" />
+              </svg>
+              Generate New Key Pair
+            </button>
+          </div>
         </div>
       )}
       
-      <div className="space-y-2 mt-2">
-        <h4 className="text-[10px] font-medium text-white">Import Existing Public Key</h4>
-        <div className="space-y-1.5">
+      <div className="bg-secondary-dark/70 rounded-lg border border-border-dark p-4 mt-4">
+        <h4 className="text-xs font-medium text-white mb-3 flex items-center">
+          <svg className="w-3.5 h-3.5 mr-1.5 text-accent-green" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 10h-4l-3 9-3-18-3 9H3" />
+          </svg>
+          Import Existing Public Key
+        </h4>
+        
+        <div className="bg-base-dark/70 rounded-lg p-3 border border-border-dark mb-3">
           <textarea
             value={publicKeyInput}
             onChange={(e) => setPublicKeyInput(e.target.value)}
-            className="w-full h-16 bg-base-dark border border-border-dark rounded-lg px-2 py-1.5 text-white font-mono text-[9px]"
+            className="w-full h-24 bg-base-dark border border-border-dark rounded-lg px-3 py-2 text-white font-mono text-[9px] focus:border-accent-green/50 focus:ring-1 focus:ring-accent-green/20 focus:outline-none transition-all"
             placeholder="Paste PGP public key here..."
           />
+          <p className="text-[9px] text-gray-500 mt-1">Paste someone else's public key to encrypt messages for them</p>
         </div>
-        <button 
-          onClick={handleImportKey}
-          disabled={isLoading || !publicKeyInput.trim()}
-          className={`bg-accent-green text-white px-2 py-1 rounded-lg hover:bg-accent-green/90 text-[9px] ${
-            (isLoading || !publicKeyInput.trim()) ? 'opacity-70 cursor-not-allowed' : ''
-          }`}
-        >
-          {isLoading ? (
-            <div className="flex items-center justify-center space-x-1.5">
-              <Loader className="w-2.5 h-2.5 animate-spin" />
-              <span>Importing...</span>
-            </div>
-          ) : (
-            'Import Key'
-          )}
-        </button>
+        
+        <div className="flex justify-end">
+          <button 
+            onClick={handleImportKey}
+            disabled={isLoading || !publicKeyInput.trim()}
+            className={`bg-accent-green text-white px-3 py-1.5 rounded-lg hover:bg-accent-green/90 text-xs font-medium flex items-center ${
+              (isLoading || !publicKeyInput.trim()) ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
+          >
+            {isLoading ? (
+              <div className="flex items-center justify-center space-x-1.5">
+                <Loader className="w-2.5 h-2.5 animate-spin" />
+                <span>Importing...</span>
+              </div>
+            ) : (
+              <>
+                <svg className="w-3 h-3 mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                Import Key
+              </>
+            )}
+          </button>
+        </div>
       </div>
       
-      <div className="mt-3">
-        <h4 className="text-[10px] font-medium text-white mb-1.5">Stored Keys</h4>
+      <div className="bg-secondary-dark/70 rounded-lg border border-border-dark p-4 mt-4">
+        <h4 className="text-xs font-medium text-white mb-3 flex items-center">
+          <svg className="w-3.5 h-3.5 mr-1.5 text-accent-green" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M7 11.5V14h10v-2.5" />
+            <path d="M12 14v7" />
+            <path d="M12 11V3" />
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          </svg>
+          Stored PGP Keys
+        </h4>
         
         {isLoading && keys.length === 0 ? (
-          <div className="flex justify-center py-2">
-            <Loader className="w-3 h-3 animate-spin text-accent-green" />
+          <div className="flex justify-center py-6 bg-base-dark/70 rounded-lg border border-border-dark">
+            <div className="flex flex-col items-center">
+              <Loader className="w-6 h-6 animate-spin text-accent-green mb-2" />
+              <p className="text-gray-400 text-xs">Loading stored keys...</p>
+            </div>
           </div>
         ) : keys.length === 0 ? (
-          <div className="text-center py-2 text-gray-500 text-[9px]">
-            No PGP keys found
+          <div className="flex flex-col items-center justify-center py-6 bg-base-dark/70 rounded-lg border border-border-dark">
+            <div className="w-12 h-12 rounded-full bg-base-dark flex items-center justify-center mb-2 border border-border-dark">
+              <Key className="w-6 h-6 text-gray-600" />
+            </div>
+            <p className="text-gray-400 text-xs mb-1">No PGP keys found</p>
+            <p className="text-gray-500 text-[9px] text-center max-w-xs mb-3">
+              Generate a new key pair or import an existing public key to get started
+            </p>
           </div>
         ) : (
-          <div className="space-y-1.5 max-h-40 overflow-y-auto">
+          <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
             {keys.map((key) => (
-              <div key={key.fingerprint} className="bg-base-dark border border-border-dark rounded-lg p-1.5">
+              <div key={key.fingerprint} className="bg-base-dark/70 border border-border-dark rounded-lg p-3 hover:bg-base-dark transition-colors">
                 <div className="flex justify-between items-start">
-                  <div>
-                    <div className="flex items-center space-x-1.5">
-                      <p className="text-white text-[9px]">{key.email}</p>
-                      {key.isDefault && (
-                        <span className="bg-accent-green/20 text-accent-green px-1 py-0.5 rounded text-[8px]">
-                          Default
-                        </span>
-                      )}
-                      {key.hasPrivateKey && (
-                        <span className="bg-gray-700 text-gray-300 px-1 py-0.5 rounded text-[8px]">
-                          Private Key
-                        </span>
-                      )}
+                  <div className="flex items-start space-x-3">
+                    <div className="mt-0.5">
+                      <div className="w-8 h-8 rounded-full bg-accent-green/10 border border-accent-green/20 flex items-center justify-center">
+                        <Key className="w-4 h-4 text-accent-green" />
+                      </div>
                     </div>
-                    {key.name && <p className="text-[8px] text-gray-400">{key.name}</p>}
-                    <p className="text-[7px] text-gray-500 font-mono mt-0.5">
-                      {key.fingerprint}
-                    </p>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <p className="text-white text-xs font-medium">{key.email}</p>
+                        {key.isDefault && (
+                          <span className="bg-accent-green/20 text-accent-green px-1.5 py-0.5 rounded text-[9px] border border-accent-green/30">
+                            Default
+                          </span>
+                        )}
+                        {key.hasPrivateKey && (
+                          <span className="bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded text-[9px] border border-purple-500/20">
+                            Private Key
+                          </span>
+                        )}
+                      </div>
+                      {key.name && <p className="text-[11px] text-gray-400 mt-0.5">{key.name}</p>}
+                      <p className="text-[10px] text-gray-500 font-mono mt-1 tracking-tight">
+                        {key.fingerprint}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex space-x-1.5">
+                  
+                  <div className="flex space-x-2">
                     {!key.isDefault && key.hasPrivateKey && (
                       <button 
                         onClick={() => handleSetDefaultKey(key.fingerprint)}
-                        className="text-accent-green hover:text-accent-green/80"
+                        className="bg-accent-green/10 text-accent-green hover:bg-accent-green/20 transition-colors p-1.5 rounded"
                         title="Set as default key"
                       >
-                        <CheckCircle className="w-2.5 h-2.5" />
+                        <CheckCircle className="w-3.5 h-3.5" />
                       </button>
                     )}
                     <button 
                       onClick={() => handleDeleteKey(key.fingerprint)}
-                      className="text-red-500 hover:text-red-400"
+                      className="bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors p-1.5 rounded"
                       title="Delete key"
                     >
-                      <X className="w-2.5 h-2.5" />
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
