@@ -180,9 +180,9 @@ const MailList = ({ emails = [], selectedMailId, onSelectMail }: MailListProps) 
                   boxShadow: '0 2px 15px rgba(12, 28, 61, 0.5), inset 0 1px 0 0 rgba(193, 209, 247, 0.05)'
                 } : {}}
               >
-                <div className="flex items-center space-x-4">
+                <div className="flex items-start space-x-4">
                   <div className="flex-shrink-0">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center mt-1 ${
                       selectedMailId === mail.id 
                         ? 'bg-[#12d992]/20' 
                         : mail.status === 'NEW'
@@ -236,28 +236,31 @@ const MailList = ({ emails = [], selectedMailId, onSelectMail }: MailListProps) 
                     </div>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className={`text-xs font-medium tracking-wide ${
-                      selectedMailId === mail.id 
-                        ? 'text-white' 
-                        : hoveredItemId === mail.id
-                        ? 'text-[#c1d1f7]'
-                        : 'text-[#c1d1f7]/80'
-                    }`}
-                    style={selectedMailId === mail.id ? {
-                      textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)'
-                    } : {}}
-                    >{mail.from.length > 25 ? mail.from.substring(0, 25) + '...' : mail.from}</p>
-                    <p className={`text-xs truncate font-medium ${
-                      selectedMailId === mail.id 
-                        ? 'text-[#c1d1f7]/90' 
-                        : hoveredItemId === mail.id
-                        ? 'text-[#c1d1f7]/70'
-                        : 'text-[#526583]'
-                    }`}
-                    style={selectedMailId === mail.id ? {
-                      textShadow: '0 1px 1px rgba(0, 0, 0, 0.1)'
-                    } : {}}
-                    >{mail.subject}</p>
+                    <div className="space-y-1.5">
+                      <p className={`text-xs font-medium tracking-wide ${
+                        selectedMailId === mail.id 
+                          ? 'text-white' 
+                          : hoveredItemId === mail.id
+                          ? 'text-[#c1d1f7]'
+                          : 'text-[#c1d1f7]/80'
+                      }`}
+                      style={selectedMailId === mail.id ? {
+                        textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)'
+                      } : {}}
+                      >{mail.from.length > 25 ? mail.from.substring(0, 25) + '...' : mail.from}</p>
+                      
+                      <p className={`text-xs truncate font-medium ${
+                        selectedMailId === mail.id 
+                          ? 'text-[#c1d1f7]/90' 
+                          : hoveredItemId === mail.id
+                          ? 'text-[#c1d1f7]/70'
+                          : 'text-[#526583]'
+                      }`}
+                      style={selectedMailId === mail.id ? {
+                        textShadow: '0 1px 1px rgba(0, 0, 0, 0.1)'
+                      } : {}}
+                      >{mail.subject}</p>
+                    </div>
                     <div className="flex items-center justify-between mt-1.5">
                       {mail.status === 'NEW' ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[#f3c677]/10 text-[#f3c677] border border-[#f3c677]/20"
@@ -274,7 +277,7 @@ const MailList = ({ emails = [], selectedMailId, onSelectMail }: MailListProps) 
                           <span>Read</span>
                         </span>
                       )}
-                      <p className="text-xs text-[#526583]/80">
+                      <p className="text-xs text-[#526583]/80 pl-1">
                         {mail.date 
                           ? new Date(mail.date instanceof Date ? mail.date : new Date(mail.date)).toLocaleDateString(undefined, {
                               month: 'short',
