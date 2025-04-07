@@ -56,26 +56,28 @@ const SettingsDialog = ({ isOpen, onClose }: SettingsDialogProps) => {
           </div>
 
           <div className="grid grid-cols-[150px_1fr] gap-3 h-full mt-1.5">
-            <div className="border-r border-border-dark pr-2">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center gap-1.5 px-2 py-1.5 text-[9px] md:text-xs rounded-l-lg transition-all ${
-                      activeTab === tab.id
-                        ? 'bg-accent-green/30 text-white font-medium border-r-2 border-accent-green border-l border-t border-b border-accent-green/40 shadow-sm'
-                        : 'text-gray-400 hover:bg-hover-dark hover:text-gray-300'
-                    }`}
-                  >
-                    <div className={activeTab === tab.id ? 'text-accent-green' : ''}>
-                      <Icon className={`w-3 h-3`} />
-                    </div>
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
+            <div className="flex flex-col border-r border-border-dark pr-2">
+              <div className="flex flex-col space-y-1">
+                {tabs.map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`w-full flex items-center gap-1.5 px-2 py-1.5 text-[9px] md:text-xs rounded-l-lg transition-all ${
+                        activeTab === tab.id
+                          ? 'bg-accent-green/30 text-white font-medium border-r-2 border-accent-green border-l border-t border-b border-accent-green/40 shadow-sm'
+                          : 'text-gray-400 hover:bg-hover-dark hover:text-gray-300'
+                      }`}
+                    >
+                      <div className={activeTab === tab.id ? 'text-accent-green' : ''}>
+                        <Icon className={`w-3 h-3`} />
+                      </div>
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="p-3 overflow-y-auto pr-4 max-h-[500px]">
