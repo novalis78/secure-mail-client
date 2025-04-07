@@ -218,10 +218,27 @@ export class ImapService {
                     html.includes('BEGIN PGP MESSAGE') ||
                     html.includes('BEGIN PGP SIGNED MESSAGE') ||
                     
+                    // Look for Mailvelope signatures (common in forwarded messages)
+                    text.includes('Version: Mailvelope') ||
+                    html.includes('Version: Mailvelope') ||
+                    
+                    // Look for common forwarded message patterns with PGP content
+                    text.includes('Forwarded message') && (
+                      text.includes('BEGIN PGP') || 
+                      text.includes('END PGP')
+                    ) ||
+                    
+                    // Look for other PGP client signatures
+                    text.includes('Version: GnuPG') ||
+                    html.includes('Version: GnuPG') ||
+                    text.includes('Version: OpenPGP') ||
+                    html.includes('Version: OpenPGP') ||
+                    
                     // Check for PGP/GPG in subject (common for encrypted messages)
                     /\bPGP\b/i.test(subject) ||
                     /\bGPG\b/i.test(subject) ||
-                    /encrypted/i.test(subject);
+                    /\bencrypted\b/i.test(subject) ||
+                    /\bsecure message\b/i.test(subject);
 
                   if (isPGP) {
                     messages.push({
