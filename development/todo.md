@@ -199,7 +199,7 @@ The application has a beautiful, zen-like interface matching the target aestheti
 3. [x] Increase contrast for selected items in the email list
 4. [x] Make date formatting consistent throughout the application
 5. [x] Replace text labels like "MESSAGE VIEWED" with appropriate icons
-6. [ ] Fix/remove the green blob underneath the Compose button
+6. [x] Fix/remove the green blob underneath the Compose button
 7. [x] Ensure email list properly shows PGP/encrypted status of emails
 
 ### Detail View Improvements
