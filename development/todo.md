@@ -191,6 +191,31 @@ The application has a beautiful, zen-like interface matching the target aestheti
 4. ✅ Implement real PGP encryption/decryption with actual emails
 5. ✅ Fix configuration storage issues
 
+## UI Improvement Todo List (URGENT)
+
+### Email List Improvements
+1. [ ] Fix maillist entries being cut off by the detail pane
+2. [ ] Fix the resizable panel slider not working properly
+3. [ ] Increase contrast for selected items in the email list
+4. [ ] Make date formatting consistent throughout the application
+5. [ ] Replace text labels like "MESSAGE VIEWED" with appropriate icons
+6. [ ] Fix/remove the green blob underneath the Compose button
+7. [ ] Ensure email list properly shows PGP/encrypted status of emails
+
+### Detail View Improvements
+1. [ ] Fix empty state messaging to be clearer ("No encrypted emails found" is confusing)
+2. [ ] Always show encrypted content in mail detail, even if not decrypted yet
+3. [ ] Remove stray ">" character appearing in mail detail
+4. [ ] Improve header formatting for consistency 
+5. [ ] Match TV show sample UI design more closely for encryption visuals
+6. [ ] Fix "NOT ENCRYPTED" badge - everything should be treated as encrypted
+
+### General UI/UX Improvements
+1. [ ] Add auto-refresh on startup to pull in emails automatically
+2. [ ] Add a refresh button to the top bar for manual refresh
+3. [ ] Display decryption status more clearly (partially decrypted, fully encrypted, etc.)
+4. [ ] Fix responsive layout for better display across different screen sizes
+
 ## Tasks for Next Release (v0.2.0)
 
 1. Add key server lookup for recipient emails
