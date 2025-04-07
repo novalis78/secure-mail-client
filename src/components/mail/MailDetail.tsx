@@ -305,7 +305,11 @@ const MailDetail = ({ email }: MailDetailProps) => {
     }
     
     const beforePGP = email.text.substring(0, pgpStart);
-    const pgpMessage = email.text.substring(pgpStart, pgpEnd + 25); // +25 to include the end marker
+    // Use the already defined pgpMessage variable from above
+    // Redefine it only if it wasn't set before
+    if (!pgpMessage) {
+      pgpMessage = email.text.substring(pgpStart, pgpEnd + 25); // +25 to include the end marker
+    }
     const afterPGP = email.text.substring(pgpEnd + 25);
     
     // Full email with headers toggle section
