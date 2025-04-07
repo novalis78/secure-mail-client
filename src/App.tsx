@@ -68,30 +68,61 @@ function App() {
           onComposeClick={handleComposeClick}
         />
         
-        {/* Email List Panel */}
-        <div className="w-mail-list border-r border-border-dark">
-          <MailList 
-            emails={emails}
-            selectedMailId={selectedMailId}
-            onSelectMail={(id) => {
-              setSelectedMailId(id);
-              setIsComposing(false);
-            }}
-          />
-        </div>
+        {/* Resizable Layout */}
+        <div className="flex flex-1 relative">
+          {/* Email List Panel */}
+          <div className="flex-shrink-0 w-mail-list min-w-[280px] max-w-[550px] border-r border-border-dark relative">
+            <MailList 
+              emails={emails}
+              selectedMailId={selectedMailId}
+              onSelectMail={(id) => {
+                setSelectedMailId(id);
+                setIsComposing(false);
+              }}
+            />
+            {/* Resizable Handle */}
+            <div 
+              className="absolute top-0 right-0 w-1 h-full cursor-col-resize bg-border-dark/50 hover:bg-accent-green/50 z-10"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                
+                const startX = e.clientX;
+                const listPanel = e.currentTarget.parentElement;
+                if (!listPanel) return;
+                
+                const startWidth = listPanel.getBoundingClientRect().width;
+                
+                const onMouseMove = (moveEvent: MouseEvent) => {
+                  const newWidth = startWidth + moveEvent.clientX - startX;
+                  if (newWidth >= 280 && newWidth <= 550) {
+                    listPanel.style.width = `${newWidth}px`;
+                  }
+                };
+                
+                const onMouseUp = () => {
+                  document.removeEventListener('mousemove', onMouseMove);
+                  document.removeEventListener('mouseup', onMouseUp);
+                };
+                
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+              }}
+            />
+          </div>
 
-        {/* Main Content Panel */}
-        <main className="flex-1 bg-base-dark">
-          {isComposing ? (
-            <ComposeEmail onCancel={() => setIsComposing(false)} />
-          ) : selectedEmail ? (
-            <MailDetail email={selectedEmail} />
-          ) : (
-            <div className="flex items-center justify-center h-full text-gray-500">
-              <p>Select an email to view its contents</p>
-            </div>
-          )}
-        </main>
+          {/* Main Content Panel */}
+          <main className="flex-1 bg-base-dark overflow-auto w-full">
+            {isComposing ? (
+              <ComposeEmail onCancel={() => setIsComposing(false)} />
+            ) : selectedEmail ? (
+              <MailDetail email={selectedEmail} />
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                <p>Select an email to view its contents</p>
+              </div>
+            )}
+          </main>
+        </div>
       </div>
 
       <SettingsDialog 
