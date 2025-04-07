@@ -108,12 +108,20 @@ const MailDetail = ({ email }: MailDetailProps) => {
 
   // Helper function to extract PGP content from various formats
   const extractPGPMessage = (text: string): string | null => {
-    // Check for standard PGP markers
-    let pgpStart = text.indexOf('-----BEGIN PGP MESSAGE-----');
-    let pgpEnd = text.indexOf('-----END PGP MESSAGE-----');
+    // Check for standard PGP message markers
+    let pgpMessageStart = text.indexOf('-----BEGIN PGP MESSAGE-----');
+    let pgpMessageEnd = text.indexOf('-----END PGP MESSAGE-----');
     
-    if (pgpStart !== -1 && pgpEnd !== -1) {
-      return text.substring(pgpStart, pgpEnd + 25); // +25 to include the end marker
+    if (pgpMessageStart !== -1 && pgpMessageEnd !== -1) {
+      return text.substring(pgpMessageStart, pgpMessageEnd + 25); // +25 to include the end marker
+    }
+    
+    // Check for PGP signed message markers
+    let pgpSignedStart = text.indexOf('-----BEGIN PGP SIGNED MESSAGE-----');
+    let pgpSignedEnd = text.indexOf('-----END PGP SIGNATURE-----');
+    
+    if (pgpSignedStart !== -1 && pgpSignedEnd !== -1) {
+      return text.substring(pgpSignedStart, pgpSignedEnd + 26); // +26 to include the end marker
     }
     
     // Check for Mailvelope
@@ -137,6 +145,13 @@ const MailDetail = ({ email }: MailDetailProps) => {
       if (pgpStartInForwarded !== -1 && pgpEndInForwarded !== -1) {
         return text.substring(pgpStartInForwarded, pgpEndInForwarded + 30);
       }
+    }
+    
+    // Additional check for any kind of PGP block (more robust detection)
+    const pgpBlockRegex = /-----BEGIN PGP .*?-----[\s\S]*?-----END PGP .*?-----/g;
+    const matches = text.match(pgpBlockRegex);
+    if (matches && matches.length > 0) {
+      return matches[0];
     }
     
     return null;
@@ -225,28 +240,18 @@ const MailDetail = ({ email }: MailDetailProps) => {
   const renderPGPContent = () => {
     if (!email.text) return <p className="text-gray-400">No content available</p>;
     
-    let pgpStart = email.text.indexOf('-----BEGIN PGP MESSAGE-----');
-    let pgpEnd = email.text.indexOf('-----END PGP MESSAGE-----');
-    let foundPGPContent = false;
-    let pgpMessage = "";
+    // Use our improved extraction function to find PGP content
+    const pgpMessageBlock = extractPGPMessage(email.text);
+    let foundPGPContent = !!pgpMessageBlock;
+    let pgpMessage = pgpMessageBlock || "";
     
-    // Check for standard PGP markers
-    if (pgpStart !== -1 && pgpEnd !== -1) {
-      pgpMessage = email.text.substring(pgpStart, pgpEnd + 25); // +25 to include the end marker
-      foundPGPContent = true;
-    } 
-    // Check for Mailvelope or other variations
-    else if (email.text.includes('Version: Mailvelope')) {
-      const mailerStart = email.text.indexOf('Version: Mailvelope');
-      const possibleStart = email.text.lastIndexOf('-----BEGIN', mailerStart - 100);
-      const possibleEnd = email.text.indexOf('-----END', mailerStart);
-      
-      if (possibleStart !== -1 && possibleEnd !== -1) {
-        pgpMessage = email.text.substring(possibleStart, possibleEnd + 30);
-        pgpStart = possibleStart;
-        pgpEnd = possibleEnd;
-        foundPGPContent = true;
-      }
+    // If we found a PGP block, determine the start and end positions
+    let pgpStart = -1;
+    let pgpEnd = -1;
+    
+    if (foundPGPContent) {
+      pgpStart = email.text.indexOf(pgpMessage);
+      pgpEnd = pgpStart + pgpMessage.length - 1;
     }
     
     // Even if we can't find PGP markers, we'll treat all messages as secure
