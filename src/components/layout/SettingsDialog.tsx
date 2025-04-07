@@ -42,20 +42,18 @@ const SettingsDialog = ({ isOpen, onClose }: SettingsDialogProps) => {
     <ErrorBoundary>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <WideDialogContent className="border border-border-dark">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-semibold text-white flex items-center">
-              <span className="flex items-center">
-                <Shield className="w-3.5 h-3.5 mr-1.5" />
-                <span>Settings</span>
-              </span>
-            </DialogTitle>
+          <div className="flex items-center justify-between py-2 px-3">
+            <div className="flex items-center">
+              <Shield className="w-3.5 h-3.5 mr-1.5 text-accent-green" />
+              <h2 className="text-sm font-semibold text-white">Settings</h2>
+            </div>
             <button
               onClick={onClose}
-              className="absolute right-2.5 top-2.5 text-gray-400 hover:text-white"
+              className="text-gray-400 hover:text-white"
             >
               <X className="w-3.5 h-3.5" />
             </button>
-          </DialogHeader>
+          </div>
 
           <div className="grid grid-cols-[150px_1fr] gap-3 h-full mt-1.5">
             <div className="border-r border-border-dark pr-2">
@@ -78,7 +76,7 @@ const SettingsDialog = ({ isOpen, onClose }: SettingsDialogProps) => {
               })}
             </div>
 
-            <div className="p-3 overflow-y-auto pr-4">
+            <div className="p-3 overflow-y-auto pr-4 max-h-[500px]">
               {activeTab === 'email' && <EmailSettings />}
               {activeTab === 'keys' && <KeyManagement />}
               {activeTab === 'yubikey' && <YubiKeySettings />}
