@@ -55,7 +55,13 @@ function createWindow() {
       const storedConfig = credentialService?.getImapCredentials();
       if (storedConfig && storedConfig.email && storedConfig.password) {
         console.log('Attempting to connect with stored credentials');
-        await imapService?.connect(storedConfig);
+        // Adapt the credential format to what ImapService expects
+        await imapService?.connect({
+          user: storedConfig.email,
+          password: storedConfig.password,
+          host: storedConfig.host,
+          port: storedConfig.port
+        });
       }
     } catch (error) {
       console.error('Error auto-connecting with stored credentials:', error);
