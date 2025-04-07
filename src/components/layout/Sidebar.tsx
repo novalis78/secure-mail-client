@@ -21,7 +21,7 @@ const Sidebar = ({ activePath, setActivePath, onComposeClick }: SidebarProps) =>
   return (
     <div className="w-48 bg-secondary-dark flex flex-col h-full border-r border-border-dark">
       {/* Compose Button */}
-      <div className="p-4">
+      <div className="p-4 pb-2">
         <button
           onClick={onComposeClick}
           className="w-full bg-accent-green hover:bg-accent-green/90 text-white rounded-lg px-4 py-2 text-sm font-medium flex items-center justify-center gap-2"
