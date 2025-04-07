@@ -43,9 +43,11 @@ const SettingsDialog = ({ isOpen, onClose }: SettingsDialogProps) => {
       <Dialog open={isOpen} onOpenChange={onClose}>
         <WideDialogContent className="border border-border-dark">
           <DialogHeader>
-            <DialogTitle className="text-sm font-semibold text-white flex items-center gap-1.5">
-              <Shield className="w-3.5 h-3.5" />
-              Settings
+            <DialogTitle className="text-sm font-semibold text-white flex items-center">
+              <span className="flex items-center">
+                <Shield className="w-3.5 h-3.5 mr-1.5" />
+                <span>Settings</span>
+              </span>
             </DialogTitle>
             <button
               onClick={onClose}
