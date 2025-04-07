@@ -40,11 +40,13 @@ const Sidebar = ({ activePath, setActivePath, onComposeClick }: SidebarProps) =>
                 onClick={() => setActivePath(item.path)}
                 className={`w-full flex items-center gap-2 p-2 rounded-lg cursor-pointer text-left ${
                   activePath === item.path 
-                    ? 'bg-accent-green/20 text-accent-green' 
+                    ? 'bg-accent-green/30 text-white font-medium border border-accent-green/40' 
                     : 'text-gray-400 hover:bg-hover-dark hover:text-gray-300'
                 }`}
               >
-                {item.icon}
+                <div className={activePath === item.path ? 'text-accent-green' : ''}>
+                  {item.icon}
+                </div>
                 <span className="text-sm">{item.label}</span>
               </button>
             </li>
