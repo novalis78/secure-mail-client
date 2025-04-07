@@ -35,9 +35,21 @@ function App() {
     setIsRefreshing(true);
     
     try {
-      await window.electron.imap.fetchEmails();
+      const result = await window.electron.imap.fetchEmails();
+      
+      if (!result.success) {
+        console.error('Error refreshing emails:', result.error);
+        
+        // If we get a connection error, show settings dialog to allow user to reconnect
+        if (result.error?.includes('Not connected to IMAP server')) {
+          console.log('Not connected to IMAP, showing settings dialog');
+          setShowSettings(true);
+        }
+      }
     } catch (error) {
       console.error('Error refreshing emails:', error);
+      // Show settings on any error to let user fix the connection
+      setShowSettings(true);
     }
   };
 

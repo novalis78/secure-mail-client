@@ -101,6 +101,28 @@ ipcMain.handle('imap:connect', async (_, config) => {
 
 ipcMain.handle('imap:fetch-emails', async () => {
   try {
+    // If not connected, try to use stored credentials
+    if (!imapService || !(imapService as any).isConnected) {
+      console.log('IMAP not connected during fetch request, trying to connect with stored credentials');
+      const storedConfig = credentialService?.getImapCredentials();
+      
+      if (storedConfig && storedConfig.email && storedConfig.password) {
+        console.log('Found stored credentials, attempting to connect');
+        await imapService?.connect({
+          user: storedConfig.email,
+          password: storedConfig.password,
+          host: storedConfig.host || 'imap.gmail.com',
+          port: storedConfig.port || 993
+        });
+        // Allow a brief moment for connection to stabilize
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } else {
+        console.log('No stored credentials found, user needs to connect manually');
+        return { success: false, error: 'Not connected to IMAP server. Please connect in settings.' };
+      }
+    }
+    
+    // Now try to fetch emails
     const emails = await imapService?.fetchPGPEmails();
     return { success: true, emails };
   } catch (error) {

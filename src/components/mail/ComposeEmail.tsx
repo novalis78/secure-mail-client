@@ -136,62 +136,59 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
       </div>
 
       {/* Email Form */}
-      <div className="flex-1">
+      <div className="flex-1 space-y-5">
         {error && (
-          <div className="bg-red-500/10 text-red-500 p-4 rounded-lg mb-5">
+          <div className="bg-red-500/10 text-red-500 p-4 rounded-lg">
             {error}
           </div>
         )}
 
-        {/* Header row with To, Subject fields */}
-        <div className="flex space-x-4 mb-5">
-          {/* To field */}
-          <div className="relative flex-1">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-              <User size={18} />
-            </div>
-            <div className="flex">
-              <input
-                type="text"
-                placeholder="To:"
-                value={recipient}
-                onChange={(e) => setRecipient(e.target.value)}
-                className="w-full bg-secondary-dark pl-12 pr-4 py-4 rounded-l-xl focus:outline-none focus:ring-1 focus:ring-accent-green text-gray-100 placeholder-gray-500"
-              />
-              {isSearchingRecipient && (
-                <div className="bg-secondary-dark px-4 py-2 flex items-center rounded-r-xl border-l border-border-dark">
-                  <Loader className="w-4 h-4 animate-spin text-accent-green" />
-                </div>
-              )}
-              {encryptWithPGP && recipient && recipientKeys.length > 0 && (
-                <div className="bg-secondary-dark px-4 py-2 flex items-center rounded-r-xl border-l border-border-dark">
-                  <Lock className="w-4 h-4 text-accent-green" />
-                </div>
-              )}
-            </div>
+        {/* To field */}
+        <div className="relative">
+          <div className="absolute left-4 top-4 text-gray-400">
+            <User size={18} />
+          </div>
+          <div className="flex">
+            <input
+              type="text"
+              placeholder="To:"
+              value={recipient}
+              onChange={(e) => setRecipient(e.target.value)}
+              className="w-full bg-secondary-dark pl-12 pr-4 py-4 rounded-l-xl focus:outline-none focus:ring-1 focus:ring-accent-green text-gray-100 placeholder-gray-500"
+            />
+            {isSearchingRecipient && (
+              <div className="bg-secondary-dark px-4 py-2 flex items-center rounded-r-xl border-l border-border-dark">
+                <Loader className="w-4 h-4 animate-spin text-accent-green" />
+              </div>
+            )}
             {encryptWithPGP && recipient && recipientKeys.length > 0 && (
-              <div className="mt-1 text-xs text-accent-green absolute -bottom-5 left-0">
-                PGP key found for this recipient
+              <div className="bg-secondary-dark px-4 py-2 flex items-center rounded-r-xl border-l border-border-dark">
+                <Lock className="w-4 h-4 text-accent-green" />
               </div>
             )}
           </div>
-          
-          {/* Subject field */}
-          <input
-            type="text"
-            placeholder="Subject:"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            className="w-1/2 bg-secondary-dark px-6 py-4 rounded-xl focus:outline-none focus:ring-1 focus:ring-accent-green text-gray-100 placeholder-gray-500"
-          />
+          {encryptWithPGP && recipient && recipientKeys.length > 0 && (
+            <div className="mt-1 text-xs text-accent-green">
+              PGP key found for this recipient
+            </div>
+          )}
         </div>
+        
+        {/* Subject field */}
+        <input
+          type="text"
+          placeholder="Subject:"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          className="w-full bg-secondary-dark px-6 py-4 rounded-xl focus:outline-none focus:ring-1 focus:ring-accent-green text-gray-100 placeholder-gray-500"
+        />
         
         {/* Message body */}
         <textarea
           placeholder="Write your message..."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          className="w-full h-72 bg-secondary-dark px-6 py-4 rounded-xl resize-none focus:outline-none focus:ring-1 focus:ring-accent-green text-gray-100 placeholder-gray-500 mt-5"
+          className="w-full h-72 bg-secondary-dark px-6 py-4 rounded-xl resize-none focus:outline-none focus:ring-1 focus:ring-accent-green text-gray-100 placeholder-gray-500"
         />
 
         {/* Attachments */}
