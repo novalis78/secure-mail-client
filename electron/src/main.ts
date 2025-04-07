@@ -52,8 +52,8 @@ function createWindow() {
   setTimeout(async () => {
     try {
       // Check if we have stored credentials
-      const storedConfig = await credentialService?.getCredentials('imap');
-      if (storedConfig && storedConfig.user && storedConfig.password) {
+      const storedConfig = credentialService?.getImapCredentials();
+      if (storedConfig && storedConfig.email && storedConfig.password) {
         console.log('Attempting to connect with stored credentials');
         await imapService?.connect(storedConfig);
       }
