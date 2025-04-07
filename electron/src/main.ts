@@ -47,6 +47,21 @@ function createWindow() {
     console.error('Error initializing OAuth service:', error);
     // We'll continue without OAuth services
   }
+  
+  // Automatically try to connect with saved credentials on startup
+  setTimeout(async () => {
+    try {
+      // Check if we have stored credentials
+      const storedConfig = await credentialService?.getCredentials('imap');
+      if (storedConfig && storedConfig.user && storedConfig.password) {
+        console.log('Attempting to connect with stored credentials');
+        await imapService?.connect(storedConfig);
+      }
+    } catch (error) {
+      console.error('Error auto-connecting with stored credentials:', error);
+      // We'll let the user connect manually
+    }
+  }, 1500); // Delay to ensure UI is loaded
 }
 
 // IMAP IPC handlers

@@ -42,16 +42,13 @@ const MailDetail = ({ email }: MailDetailProps) => {
       return;
     }
 
-    // Extract PGP message
-    const pgpStart = email.text.indexOf('-----BEGIN PGP MESSAGE-----');
-    const pgpEnd = email.text.indexOf('-----END PGP MESSAGE-----');
+    // Extract PGP message with our robust extraction function
+    const pgpMessage = extractPGPMessage(email.text);
     
-    if (pgpStart === -1 || pgpEnd === -1) {
+    if (!pgpMessage) {
       setDecryptionError('No valid PGP message found in content');
       return;
     }
-
-    const pgpMessage = email.text.substring(pgpStart, pgpEnd + 25);
     
     setIsUsingYubiKey(true);
     setYubiKeyStatus('detecting');
@@ -109,6 +106,42 @@ const MailDetail = ({ email }: MailDetailProps) => {
     }
   };
 
+  // Helper function to extract PGP content from various formats
+  const extractPGPMessage = (text: string): string | null => {
+    // Check for standard PGP markers
+    let pgpStart = text.indexOf('-----BEGIN PGP MESSAGE-----');
+    let pgpEnd = text.indexOf('-----END PGP MESSAGE-----');
+    
+    if (pgpStart !== -1 && pgpEnd !== -1) {
+      return text.substring(pgpStart, pgpEnd + 25); // +25 to include the end marker
+    }
+    
+    // Check for Mailvelope
+    if (text.includes('Version: Mailvelope')) {
+      const mailerStart = text.indexOf('Version: Mailvelope');
+      const possibleStart = text.lastIndexOf('-----BEGIN', mailerStart - 100);
+      const possibleEnd = text.indexOf('-----END', mailerStart);
+      
+      if (possibleStart !== -1 && possibleEnd !== -1) {
+        return text.substring(possibleStart, possibleEnd + 30);
+      }
+    }
+    
+    // Check for forwarded content
+    if (text.includes('Forwarded message') && text.includes('BEGIN PGP')) {
+      // Try to locate PGP block in forwarded message
+      const forwardedStart = text.indexOf('Forwarded message');
+      const pgpStartInForwarded = text.indexOf('-----BEGIN PGP', forwardedStart);
+      const pgpEndInForwarded = text.indexOf('-----END PGP', pgpStartInForwarded);
+      
+      if (pgpStartInForwarded !== -1 && pgpEndInForwarded !== -1) {
+        return text.substring(pgpStartInForwarded, pgpEndInForwarded + 30);
+      }
+    }
+    
+    return null;
+  };
+
   // Handle decryption with passphrase
   const handleDecrypt = async () => {
     if (!(window as any).electron?.pgp) {
@@ -121,19 +154,11 @@ const MailDetail = ({ email }: MailDetailProps) => {
       return;
     }
 
-    // Extract PGP message block
-    const pgpStart = email.text.indexOf('-----BEGIN PGP MESSAGE-----');
-    const pgpEnd = email.text.indexOf('-----END PGP MESSAGE-----');
-    
-    if (pgpStart === -1 || pgpEnd === -1) {
-      setDecryptionError('No valid PGP message found in content');
-      return;
-    }
-
-    const pgpMessage = email.text.substring(pgpStart, pgpEnd + 25); // +25 to include the end marker
+    // Extract PGP message with our robust extraction function
+    const pgpMessage = extractPGPMessage(email.text);
     
     if (!pgpMessage) {
-      setDecryptionError('Empty PGP message');
+      setDecryptionError('No valid PGP message found in content');
       return;
     }
 
@@ -200,11 +225,48 @@ const MailDetail = ({ email }: MailDetailProps) => {
   const renderPGPContent = () => {
     if (!email.text) return <p className="text-gray-400">No content available</p>;
     
-    const pgpStart = email.text.indexOf('-----BEGIN PGP MESSAGE-----');
-    const pgpEnd = email.text.indexOf('-----END PGP MESSAGE-----');
+    let pgpStart = email.text.indexOf('-----BEGIN PGP MESSAGE-----');
+    let pgpEnd = email.text.indexOf('-----END PGP MESSAGE-----');
+    let foundPGPContent = false;
+    let pgpMessage = "";
+    
+    // Check for standard PGP markers
+    if (pgpStart !== -1 && pgpEnd !== -1) {
+      pgpMessage = email.text.substring(pgpStart, pgpEnd + 25); // +25 to include the end marker
+      foundPGPContent = true;
+    } 
+    // Check for Mailvelope or other variations
+    else if (email.text.includes('Version: Mailvelope')) {
+      const mailerStart = email.text.indexOf('Version: Mailvelope');
+      const possibleStart = email.text.lastIndexOf('-----BEGIN', mailerStart - 100);
+      const possibleEnd = email.text.indexOf('-----END', mailerStart);
+      
+      if (possibleStart !== -1 && possibleEnd !== -1) {
+        pgpMessage = email.text.substring(possibleStart, possibleEnd + 30);
+        pgpStart = possibleStart;
+        pgpEnd = possibleEnd;
+        foundPGPContent = true;
+      }
+    }
     
     // Even if we can't find PGP markers, we'll treat all messages as secure
-  if (pgpStart === -1 || pgpEnd === -1) {
+    if (!foundPGPContent) {
+      // Look for potential PGP content to display, even in non-standard formats
+      let potentialContent = "";
+      
+      // If this is a forwarded message, try to find the forwarded part
+      if (email.text.includes('Forwarded message')) {
+        const forwardedStart = email.text.indexOf('Forwarded message');
+        potentialContent = email.text.substring(forwardedStart);
+      } 
+      // Look for Base64-encoded content (common in PGP emails)
+      else if (email.text.match(/[A-Za-z0-9+/]{50,}={0,2}/)) {
+        const match = email.text.match(/[A-Za-z0-9+/]{50,}={0,2}/);
+        potentialContent = match ? match[0] : email.text;
+      } else {
+        potentialContent = email.text;
+      }
+      
       return (
         <div className="space-y-4">
           {/* Display email content with potential encrypted data visualization */}
@@ -214,19 +276,13 @@ const MailDetail = ({ email }: MailDetailProps) => {
             </div>
           </div>
           
-          {/* Show encrypted data representation similar to Gmail */}
+          {/* Show actual content that might be encrypted, similar to Gmail */}
           <div className="bg-base-dark border border-border-dark rounded-lg p-4 mt-4 mb-2">
             <div className="space-y-3">
               <div className="text-yellow-500 text-xs font-medium">Potential Encrypted Content</div>
-              <div className="overflow-y-auto max-h-40 scrollbar-thin scrollbar-thumb-border-dark scrollbar-track-base-dark">
+              <div className="overflow-y-auto max-h-60 scrollbar-thin scrollbar-thumb-border-dark scrollbar-track-base-dark">
                 <div className="text-gray-400 text-xs whitespace-pre-wrap font-mono">
-                  {Array.from({ length: 12 }).map((_, i) => (
-                    <div key={i} className="mb-1 leading-relaxed">
-                      {Array.from({ length: Math.floor(Math.random() * 30) + 30 }).map((_, j) => (
-                        String.fromCharCode(Math.floor(Math.random() * 26) + 97)
-                      )).join('')}
-                    </div>
-                  ))}
+                  {potentialContent}
                 </div>
               </div>
             </div>
