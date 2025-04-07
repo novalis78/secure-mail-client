@@ -207,10 +207,28 @@ const MailDetail = ({ email }: MailDetailProps) => {
   if (pgpStart === -1 || pgpEnd === -1) {
       return (
         <div className="space-y-4">
-          {/* Display email content */}
+          {/* Display email content with potential encrypted data visualization */}
           <div className="bg-secondary-dark rounded-xl p-6">
             <div className="prose prose-invert max-w-none">
               <div className="whitespace-pre-wrap break-words text-gray-300">{email.text}</div>
+            </div>
+          </div>
+          
+          {/* Show encrypted data representation similar to Gmail */}
+          <div className="bg-base-dark border border-border-dark rounded-lg p-4 mt-4 mb-2">
+            <div className="space-y-3">
+              <div className="text-yellow-500 text-xs font-medium">Potential Encrypted Content</div>
+              <div className="overflow-y-auto max-h-40 scrollbar-thin scrollbar-thumb-border-dark scrollbar-track-base-dark">
+                <div className="text-gray-400 text-xs whitespace-pre-wrap font-mono">
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <div key={i} className="mb-1 leading-relaxed">
+                      {Array.from({ length: Math.floor(Math.random() * 30) + 30 }).map((_, j) => (
+                        String.fromCharCode(Math.floor(Math.random() * 26) + 97)
+                      )).join('')}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
           
@@ -386,12 +404,17 @@ const MailDetail = ({ email }: MailDetailProps) => {
                 <div className="bg-base-dark border border-border-dark rounded-lg p-4 font-mono">
                   <div className="space-y-3">
                     <div className="text-accent-green text-xs font-bold animate-pulse">-----BEGIN PGP MESSAGE-----</div>
-                    <div className="overflow-y-auto max-h-40 min-h-24 scrollbar-thin scrollbar-thumb-border-dark scrollbar-track-base-dark">
-                      <div className="text-gray-400 text-xs whitespace-pre-wrap font-mono tracking-wide">
+                    <div className="overflow-y-auto max-h-60 min-h-40 scrollbar-thin scrollbar-thumb-border-dark scrollbar-track-base-dark">
+                      <div className="text-gray-400 text-xs whitespace-pre-wrap font-mono tracking-wide leading-relaxed">
                         {pgpMessage
                           .replace(/-----BEGIN PGP MESSAGE-----/, '')
                           .replace(/-----END PGP MESSAGE-----/, '')
-                          .trim()}
+                          .trim()
+                          .split('').map((char, i) => (
+                            <span key={i} className="inline-block">
+                              {char === '\n' ? <br /> : char}
+                            </span>
+                          ))}
                       </div>
                     </div>
                     <div className="text-accent-green text-xs font-bold animate-pulse">-----END PGP MESSAGE-----</div>

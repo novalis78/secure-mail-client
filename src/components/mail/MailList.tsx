@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Lock, Loader, Search } from 'lucide-react';
+import { Lock, Loader, Search, Shield } from 'lucide-react';
 import { Mail } from '../../App';
 
 interface MailListProps {
@@ -73,13 +73,13 @@ const MailList = ({ emails = [], selectedMailId, onSelectMail }: MailListProps) 
   return (
     <div className="h-full flex flex-col bg-base-dark">
       {/* Search Bar */}
-      <div className="px-4 py-3 border-b border-border-dark">
+      <div className="px-4 py-3 border-b border-border-dark bg-gradient-to-r from-secondary-dark to-base-dark">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="search"
             placeholder="Search secure emails..."
-            className="w-full bg-secondary-dark text-white pl-10 pr-4 py-2 rounded-lg focus:outline-none placeholder-gray-400 text-sm"
+            className="w-full bg-base-dark/70 text-white pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent-green/30 border border-border-dark placeholder-gray-400 text-xs"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -87,22 +87,34 @@ const MailList = ({ emails = [], selectedMailId, onSelectMail }: MailListProps) 
       </div>
       
       {/* Filter Tabs */}
-      <div className="flex items-center px-6 py-3 border-b border-border-dark">
-        <div className="space-x-8 text-sm">
+      <div className="flex items-center px-6 py-3 border-b border-border-dark bg-secondary-dark">
+        <div className="flex space-x-2">
           <button 
-            className={activeFilter === 'all' ? "text-accent-green font-medium" : "text-gray-400 hover:text-white"}
+            className={`px-3 py-1.5 rounded-lg text-xs ${
+              activeFilter === 'all' 
+                ? "bg-accent-green text-white font-medium" 
+                : "bg-base-dark text-gray-400 hover:text-white"
+            }`}
             onClick={() => setActiveFilter('all')}
           >
             All
           </button>
           <button 
-            className={activeFilter === 'read' ? "text-accent-green font-medium" : "text-gray-400 hover:text-white"}
+            className={`px-3 py-1.5 rounded-lg text-xs ${
+              activeFilter === 'read' 
+                ? "bg-accent-green text-white font-medium" 
+                : "bg-base-dark text-gray-400 hover:text-white"
+            }`}
             onClick={() => setActiveFilter('read')}
           >
             Read
           </button>
           <button 
-            className={activeFilter === 'unread' ? "text-accent-green font-medium" : "text-gray-400 hover:text-white"}
+            className={`px-3 py-1.5 rounded-lg text-xs ${
+              activeFilter === 'unread' 
+                ? "bg-accent-green text-white font-medium" 
+                : "bg-base-dark text-gray-400 hover:text-white"
+            }`}
             onClick={() => setActiveFilter('unread')}
           >
             Unread
@@ -126,16 +138,22 @@ const MailList = ({ emails = [], selectedMailId, onSelectMail }: MailListProps) 
       <div className="flex-1 overflow-y-auto">
         <div className="space-y-px p-2">
           {filteredEmails.length === 0 ? (
-            <div className="text-center py-8 flex flex-col items-center justify-center h-48">
-              <div className="text-accent-green mb-3">
-                <Lock size={32} />
+            <div className="text-center py-8 flex flex-col items-center justify-center h-64">
+              <div className="text-accent-green mb-5 relative">
+                <Lock size={48} className="opacity-70" />
+                <div className="absolute inset-0 flex items-center justify-center animate-pulse duration-3000">
+                  <Lock size={32} />
+                </div>
               </div>
-              <p className="text-gray-300 font-medium mb-1">No secure messages found</p>
-              <p className="text-gray-500 text-sm max-w-xs">
+              <p className="text-gray-300 font-medium text-sm mb-1">No secure messages found</p>
+              <p className="text-gray-500 text-xs max-w-xs">
                 {searchQuery 
                   ? "No messages match your current search filters" 
                   : "Your secure inbox is empty or messages still loading"}
               </p>
+              <div className="mt-6 pt-6 border-t border-border-dark w-32 flex justify-center">
+                <Shield size={18} className="text-gray-600" />
+              </div>
             </div>
           ) : (
             filteredEmails.map(mail => (
@@ -159,20 +177,31 @@ const MailList = ({ emails = [], selectedMailId, onSelectMail }: MailListProps) 
                         ? 'bg-yellow-500/10'
                         : 'bg-secondary-dark'
                     }`}>
-                      <Lock className={`h-5 w-5 ${
-                        selectedMailId === mail.id 
-                          ? 'text-accent-green' 
-                          : mail.status === 'NEW'
-                          ? 'text-yellow-500'
-                          : 'text-gray-400'
-                      }`} />
+                      {/* Alternate between Lock and Shield icons for more variation */}
+                      {mail.id.charCodeAt(0) % 2 === 0 ? (
+                        <Lock className={`h-5 w-5 ${
+                          selectedMailId === mail.id 
+                            ? 'text-accent-green' 
+                            : mail.status === 'NEW'
+                            ? 'text-yellow-500'
+                            : 'text-gray-400'
+                        }`} />
+                      ) : (
+                        <Shield className={`h-5 w-5 ${
+                          selectedMailId === mail.id 
+                            ? 'text-accent-green' 
+                            : mail.status === 'NEW'
+                            ? 'text-yellow-500'
+                            : 'text-gray-400'
+                        }`} />
+                      )}
                     </div>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className={`text-sm font-medium ${
+                    <p className={`text-xs font-medium tracking-wide ${
                       selectedMailId === mail.id ? 'text-white' : 'text-gray-200'
-                    }`}>{mail.from}</p>
-                    <p className={`text-sm truncate ${
+                    }`}>{mail.from.length > 25 ? mail.from.substring(0, 25) + '...' : mail.from}</p>
+                    <p className={`text-xs truncate font-medium ${
                       selectedMailId === mail.id ? 'text-gray-300' : 'text-gray-400'
                     }`}>{mail.subject}</p>
                     <div className="flex items-center justify-between mt-1.5">

@@ -69,11 +69,12 @@ const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false 
               <Lock size={20} />
             </div>
             <h1 
-              className="text-white text-lg font-medium"
+              className="text-white text-lg font-bold tracking-wider"
               style={{ 
                 color: 'white',
                 fontSize: '1.125rem',
-                fontWeight: '500'
+                fontWeight: '700',
+                letterSpacing: '0.05em'
               }}
             >SECURE MAIL</h1>
           </div>

@@ -156,11 +156,15 @@ export class ImapService {
           return;
         }
 
-        // Simplified search criteria to be more compatible with different IMAP servers
+        // Enhanced search criteria to catch more encrypted emails
         const searchCriteria = [
           ['OR',
             ['BODY', 'BEGIN PGP MESSAGE'],
-            ['BODY', 'BEGIN PGP SIGNED MESSAGE']
+            ['BODY', 'BEGIN PGP SIGNED MESSAGE'],
+            ['BODY', 'PGP'],
+            ['BODY', 'ENCRYPTED'],
+            ['SUBJECT', 'PGP'],
+            ['SUBJECT', 'ENCRYPTED']
           ]
         ];
 
