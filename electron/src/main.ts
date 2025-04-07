@@ -53,21 +53,39 @@ function createWindow() {
     try {
       // Check if we have stored credentials
       const storedConfig = credentialService?.getImapCredentials();
+      
       if (storedConfig && storedConfig.email && storedConfig.password) {
-        console.log('Attempting to connect with stored credentials');
+        console.log('Attempting to connect with stored credentials:', {
+          email: storedConfig.email,
+          host: storedConfig.host,
+          port: storedConfig.port
+        });
+        
         // Adapt the credential format to what ImapService expects
         await imapService?.connect({
           user: storedConfig.email,
           password: storedConfig.password,
-          host: storedConfig.host,
-          port: storedConfig.port
+          host: storedConfig.host || 'imap.gmail.com', // Default to Gmail if not specified
+          port: storedConfig.port || 993           // Default to standard IMAP SSL port if not specified
         });
+        
+        // Add a slight delay before fetching emails to ensure connection is fully established
+        setTimeout(async () => {
+          try {
+            console.log('Auto-fetching emails after connection');
+            await imapService?.fetchPGPEmails();
+          } catch (fetchError) {
+            console.error('Error auto-fetching emails after connection:', fetchError);
+          }
+        }, 2000);
+      } else {
+        console.log('No stored IMAP credentials found for auto-connection');
       }
     } catch (error) {
       console.error('Error auto-connecting with stored credentials:', error);
       // We'll let the user connect manually
     }
-  }, 1500); // Delay to ensure UI is loaded
+  }, 2500); // Increase delay to ensure UI is fully loaded
 }
 
 // IMAP IPC handlers

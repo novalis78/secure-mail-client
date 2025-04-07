@@ -145,8 +145,23 @@ export class ImapService {
   }
 
   public async fetchPGPEmails() {
-    if (!this.isConnected) {
-      throw new Error('Not connected to IMAP server');
+    if (!this.isConnected || !this.imap) {
+      console.warn('IMAP not connected, attempting to reconnect before fetching emails');
+      
+      // Try to initialize a connection if we have stored credentials
+      try {
+        // Check if there are stored credentials we can use
+        const storedConfig = readConfig().imapConfig;
+        if (!storedConfig || !storedConfig.user) {
+          throw new Error('No IMAP configuration available for auto-reconnection');
+        }
+        
+        // We don't have the password here, so we need to notify the UI to prompt for credentials
+        this.mainWindow.webContents.send('imap:prompt-credentials');
+        throw new Error('Not connected to IMAP server - please enter credentials');
+      } catch (error) {
+        throw new Error('Not connected to IMAP server');
+      }
     }
 
     return new Promise((resolve, reject) => {
