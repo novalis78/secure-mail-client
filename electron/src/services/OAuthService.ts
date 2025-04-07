@@ -171,11 +171,11 @@ export class OAuthService {
       // Initialize Gmail API
       const gmail = google.gmail({ version: 'v1', auth: this.oauth2Client });
       
-      // Fetch encrypted emails (look for PGP headers)
+      // Fetch encrypted emails across all folders including SENT
       const res = await gmail.users.messages.list({
         userId: 'me',
-        q: 'has:attachment "BEGIN PGP MESSAGE" OR "BEGIN PGP SIGNED MESSAGE"',
-        maxResults: 20
+        q: '("BEGIN PGP MESSAGE" OR "BEGIN PGP SIGNED MESSAGE") in:anywhere',
+        maxResults: 30
       });
       
       if (!res.data.messages || res.data.messages.length === 0) {
@@ -221,6 +221,20 @@ export class OAuthService {
             const pgpMatch = body.match(/-----BEGIN PGP (MESSAGE|SIGNED MESSAGE)-----([\s\S]*?)-----END PGP (MESSAGE|SIGNED MESSAGE)-----/);
             const isPGP = !!pgpMatch;
             
+            // Determine folder from labelIds
+            let folder = 'INBOX';
+            const labelIds = fullMessage.data.labelIds || [];
+            
+            if (labelIds.includes('SENT')) {
+              folder = 'SENT';
+            } else if (labelIds.includes('DRAFT')) {
+              folder = 'DRAFT';
+            } else if (labelIds.includes('TRASH')) {
+              folder = 'TRASH';
+            } else if (labelIds.includes('SPAM')) {
+              folder = 'SPAM';
+            }
+            
             return {
               id: message.id,
               threadId: message.threadId,
@@ -230,7 +244,8 @@ export class OAuthService {
               body,
               snippet: fullMessage.data.snippet,
               isPGP,
-              labelIds: fullMessage.data.labelIds
+              labelIds,
+              folder
             };
           } catch (err) {
             console.error(`Error fetching message ${message.id}:`, err);

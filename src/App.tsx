@@ -15,6 +15,8 @@ export interface Mail {
   date: Date;
   text?: string;
   html?: string | null;
+  labelIds?: string[];
+  folder?: string;
 }
 
 function App() {
