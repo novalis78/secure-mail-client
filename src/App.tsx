@@ -5,6 +5,7 @@ import MailList from './components/mail/MailList';
 import ComposeEmail from './components/mail/ComposeEmail';
 import MailDetail from './components/mail/MailDetail';
 import SettingsDialog from './components/layout/SettingsDialog';
+import Contacts from './components/contacts/Contacts';
 
 export interface Mail {
   id: string;
@@ -28,6 +29,7 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'secure' | 'warning' | 'error'>('secure');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showContacts, setShowContacts] = useState(false);
 
   const refreshEmails = async () => {
     if (!(window as any).electron?.imap) {
@@ -166,6 +168,7 @@ function App() {
         onSettingsClick={() => setShowSettings(true)}
         onRefreshClick={refreshEmails}
         isRefreshing={isRefreshing}
+        onContactsClick={() => setShowContacts(true)}
       />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar 
@@ -258,6 +261,15 @@ function App() {
         isOpen={showSettings} 
         onClose={() => setShowSettings(false)} 
       />
+      
+      {/* Contacts View */}
+      {showContacts && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-secondary-dark w-full max-w-6xl h-[90vh] rounded-lg overflow-hidden shadow-xl">
+            <Contacts onClose={() => setShowContacts(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

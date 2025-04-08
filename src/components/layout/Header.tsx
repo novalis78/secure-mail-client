@@ -1,4 +1,4 @@
-import { Lock, Settings, Key, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Lock, Settings, Key, ShieldCheck, RefreshCw, Globe } from 'lucide-react';
 import StatusIcon from './StatusIcon';
 import HeaderActions from './HeaderActions';
 
@@ -7,9 +7,10 @@ interface HeaderProps {
   onSettingsClick?: () => void;
   onRefreshClick?: () => void;
   isRefreshing?: boolean;
+  onContactsClick?: () => void;
 }
 
-const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false }: HeaderProps) => {
+const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false, onContactsClick }: HeaderProps) => {
   const handleAction = (action: string) => {
     // Handle different actions
     switch (action) {
@@ -105,10 +106,11 @@ const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false 
                 }}
               />
             </div>
-            <div title="Key Management">
-              <Key 
+            <div title="Contacts">
+              <Globe 
                 size={20} 
                 className="text-gray-400 hover:text-gray-300 cursor-pointer"
+                onClick={onContactsClick}
                 style={{ 
                   color: '#9ca3af', 
                   cursor: 'pointer'

@@ -19,7 +19,7 @@ const Sidebar = ({ activePath, setActivePath, onComposeClick }: SidebarProps) =>
   ];
 
   return (
-    <div className="w-48 bg-secondary-dark flex flex-col h-full border-r border-border-dark">
+    <div className="w-48 bg-secondary-dark flex flex-col h-full border-r border-border-dark relative">
       {/* Compose Button */}
       <div className="p-4 pb-2">
         <button
@@ -32,19 +32,19 @@ const Sidebar = ({ activePath, setActivePath, onComposeClick }: SidebarProps) =>
       </div>
       
       {/* Navigation Menu */}
-      <nav className="flex-1 p-2 overflow-y-auto">
+      <nav className="flex-1 p-2 pr-2 pl-0 overflow-y-auto">
         <ul className="space-y-1">
           {menuItems.map(item => (
             <li key={item.path}>
               <button
                 onClick={() => setActivePath(item.path)}
-                className={`w-full flex items-center gap-2 p-2 rounded-lg cursor-pointer text-left transition-all duration-200 ${
+                className={`relative w-[calc(100%+8px)] ml-[-8px] flex items-center gap-2 p-2 pl-[16px] cursor-pointer text-left transition-all duration-200 ${
                   activePath === item.path 
-                    ? 'bg-gradient-to-l from-[#0c1c3d]/80 to-[#12d992]/20 text-white font-medium border-r-2 border-[#12d992] shadow-[0_2px_12px_rgba(12,28,61,0.3)]' 
-                    : 'text-gray-400 hover:bg-gradient-to-l hover:from-[#0c1c3d]/50 hover:to-transparent hover:text-gray-300 hover:-translate-x-0.5'
+                    ? 'bg-gradient-to-l from-[#0c1c3d]/80 to-[#12d992]/20 text-white font-medium border-r-2 border-[#12d992] rounded-r-lg z-10' 
+                    : 'text-gray-400 hover:bg-gradient-to-l hover:from-[#0c1c3d]/50 hover:to-transparent hover:text-gray-300 hover:rounded-r-lg hover:-translate-x-0.5'
                 }`}
                 style={activePath === item.path ? {
-                  boxShadow: '0 2px 8px rgba(12, 28, 61, 0.3), inset 0 1px 0 0 rgba(193, 209, 247, 0.05)'
+                  boxShadow: '0 2px 8px rgba(12, 28, 61, 0.3), 4px 0 8px rgba(12, 28, 61, 0.2)'
                 } : {}}
               >
                 <div className={activePath === item.path ? 'text-accent-green' : ''}>
