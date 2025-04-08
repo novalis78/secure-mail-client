@@ -224,10 +224,10 @@ export class ImapService {
                     id: parsed.messageId,
                     subject: parsed.subject,
                     hasText: !!parsed.text,
-                    textLength: parsed.text?.length || 0,
+                    textLength: typeof parsed.text === 'string' ? parsed.text.length : 0,
                     hasHtml: !!parsed.html,
-                    htmlLength: parsed.html?.length || 0,
-                    textSample: parsed.text ? parsed.text.substring(0, 100) + '...' : null
+                    htmlLength: typeof parsed.html === 'string' ? parsed.html.length : 0,
+                    textSample: typeof parsed.text === 'string' ? parsed.text.substring(0, 100) + '...' : null
                   });
 
                   // Enhanced PGP detection logic
