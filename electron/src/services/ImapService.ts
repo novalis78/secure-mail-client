@@ -208,6 +208,7 @@ export class ImapService {
               const messagePromise = new Promise<void>((resolveMsg, rejectMsg) => {
                 simpleParser(stream as any, async (err: Error | null, parsed: ParsedMail) => {
                   if (err) {
+                    console.error('Error parsing email:', err);
                     rejectMsg(err);
                     return;
                   }
@@ -216,6 +217,17 @@ export class ImapService {
                   this.mainWindow.webContents.send('imap:progress', {
                     current: processedCount,
                     total: results.length
+                  });
+                  
+                  // Log detailed email content for debugging
+                  console.log('Parsed email debug:', {
+                    id: parsed.messageId,
+                    subject: parsed.subject,
+                    hasText: !!parsed.text,
+                    textLength: parsed.text?.length || 0,
+                    hasHtml: !!parsed.html,
+                    htmlLength: parsed.html?.length || 0,
+                    textSample: parsed.text ? parsed.text.substring(0, 100) + '...' : null
                   });
 
                   // Enhanced PGP detection logic

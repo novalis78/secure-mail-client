@@ -22,6 +22,18 @@ const MailDetail = ({ email }: MailDetailProps) => {
     setDecryptProgress(0);
     setIsDecrypted(false);
     setDecryptedContent(null);
+    
+    // Debug log to see what's in the email object
+    console.log("Mail detail received:", {
+      id: email.id,
+      from: email.from,
+      subject: email.subject,
+      hasText: !!email.text,
+      textLength: email.text?.length || 0,
+      textStart: email.text ? email.text.substring(0, 100) : null,
+      hasHtml: !!email.html,
+      htmlLength: email.html?.length || 0
+    });
   }, [email.id]);
 
   const [decryptionError, setDecryptionError] = useState<string | null>(null);
@@ -107,7 +119,8 @@ const MailDetail = ({ email }: MailDetailProps) => {
   };
 
   // Helper function to extract PGP content from various formats
-  const extractPGPMessage = (text: string): string | null => {
+  const extractPGPMessage = (text: string | null): string | null => {
+    if (!text) return null;
     // Check for standard PGP message markers
     let pgpMessageStart = text.indexOf('-----BEGIN PGP MESSAGE-----');
     let pgpMessageEnd = text.indexOf('-----END PGP MESSAGE-----');
@@ -238,10 +251,37 @@ const MailDetail = ({ email }: MailDetailProps) => {
 
   // Identify where the PGP message begins and ends, if present
   const renderPGPContent = () => {
-    if (!email.text) return <p className="text-gray-400">No content available</p>;
+    console.log("Rendering PGP content, email.text:", email.text ? `${email.text.slice(0, 50)}...` : "null");
+    console.log("Email HTML content available:", email.html ? `${email.html.slice(0, 50)}...` : "null");
+    
+    // Get the content to display - use HTML content if text isn't available
+    const emailContent = email.text || email.html;
+    
+    // Display empty state if no content is available at all
+    if (!emailContent) {
+      return (
+        <div className="p-4 bg-secondary-dark/50 rounded-lg border border-border-dark">
+          <h3 className="text-yellow-500 text-sm mb-2">No Content Available</h3>
+          <p className="text-gray-400 text-xs mb-3">The email does not contain any text or HTML content.</p>
+          <div className="bg-base-dark/80 p-3 rounded border border-border-dark">
+            <p className="text-xs text-gray-500 mb-1">Debug Info:</p>
+            <p className="text-xs text-gray-400 font-mono">
+              id: {email.id}<br/>
+              from: {email.from}<br/>
+              subject: {email.subject}<br/>
+              text: {email.text ? 'present' : 'null'}<br/>
+              html: {email.html ? 'present' : 'null'}<br/>
+            </p>
+          </div>
+        </div>
+      );
+    }
+    
+    // Get the content to use - prefer text but fall back to HTML if needed
+    const contentToUse = email.text || email.html || "";
     
     // Use our improved extraction function to find PGP content
-    const pgpMessageBlock = extractPGPMessage(email.text);
+    const pgpMessageBlock = extractPGPMessage(contentToUse);
     let foundPGPContent = !!pgpMessageBlock;
     let pgpMessage = pgpMessageBlock || "";
     
@@ -250,7 +290,7 @@ const MailDetail = ({ email }: MailDetailProps) => {
     let pgpEnd = -1;
     
     if (foundPGPContent) {
-      pgpStart = email.text.indexOf(pgpMessage);
+      pgpStart = contentToUse.indexOf(pgpMessage);
       pgpEnd = pgpStart + pgpMessage.length - 1;
     }
     
@@ -260,16 +300,16 @@ const MailDetail = ({ email }: MailDetailProps) => {
       let potentialContent = "";
       
       // If this is a forwarded message, try to find the forwarded part
-      if (email.text.includes('Forwarded message')) {
-        const forwardedStart = email.text.indexOf('Forwarded message');
-        potentialContent = email.text.substring(forwardedStart);
+      if (contentToUse.includes('Forwarded message')) {
+        const forwardedStart = contentToUse.indexOf('Forwarded message');
+        potentialContent = contentToUse.substring(forwardedStart);
       } 
       // Look for Base64-encoded content (common in PGP emails)
-      else if (email.text.match(/[A-Za-z0-9+/]{50,}={0,2}/)) {
-        const match = email.text.match(/[A-Za-z0-9+/]{50,}={0,2}/);
-        potentialContent = match ? match[0] : email.text;
+      else if (contentToUse.match(/[A-Za-z0-9+/]{50,}={0,2}/)) {
+        const match = contentToUse.match(/[A-Za-z0-9+/]{50,}={0,2}/);
+        potentialContent = match ? match[0] : contentToUse;
       } else {
-        potentialContent = email.text;
+        potentialContent = contentToUse;
       }
       
       return (
@@ -277,7 +317,7 @@ const MailDetail = ({ email }: MailDetailProps) => {
           {/* Display email content with potential encrypted data visualization */}
           <div className="bg-secondary-dark rounded-xl p-6">
             <div className="prose prose-invert max-w-none">
-              <div className="whitespace-pre-wrap break-words text-gray-300">{email.text}</div>
+              <div className="whitespace-pre-wrap break-words text-gray-300">{contentToUse}</div>
             </div>
           </div>
           
@@ -309,13 +349,13 @@ const MailDetail = ({ email }: MailDetailProps) => {
       );
     }
     
-    const beforePGP = email.text.substring(0, pgpStart);
+    const beforePGP = contentToUse.substring(0, pgpStart);
     // Use the already defined pgpMessage variable from above
     // Redefine it only if it wasn't set before
     if (!pgpMessage) {
-      pgpMessage = email.text.substring(pgpStart, pgpEnd + 25); // +25 to include the end marker
+      pgpMessage = contentToUse.substring(pgpStart, pgpEnd + 25); // +25 to include the end marker
     }
-    const afterPGP = email.text.substring(pgpEnd + 25);
+    const afterPGP = contentToUse.substring(pgpEnd + 25);
     
     // Full email with headers toggle section
     const fullEmailSection = showFullEmail ? (
@@ -330,7 +370,7 @@ const MailDetail = ({ email }: MailDetailProps) => {
           </button>
         </div>
         <div className="overflow-auto max-h-[400px] font-mono text-xs">
-          <pre className="whitespace-pre-wrap break-words text-gray-400 leading-relaxed">{email.text}</pre>
+          <pre className="whitespace-pre-wrap break-words text-gray-400 leading-relaxed">{contentToUse}</pre>
         </div>
       </div>
     ) : (

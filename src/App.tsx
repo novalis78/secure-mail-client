@@ -116,7 +116,27 @@ function App() {
     refreshEmails();
   }, []);
 
+  // Add debug logging to see what's happening with email selection
   const selectedEmail = emails.find(email => email.id === selectedMailId);
+  
+  useEffect(() => {
+    if (selectedMailId) {
+      console.log("Selected mail ID:", selectedMailId);
+      console.log("Found email object:", selectedEmail);
+      
+      if (selectedEmail) {
+        // Log email properties to check for text content
+        console.log("Email content available:", {
+          hasText: !!selectedEmail.text,
+          hasHtml: !!selectedEmail.html,
+          textLength: selectedEmail.text?.length || 0,
+          htmlLength: selectedEmail.html?.length || 0
+        });
+      } else {
+        console.log("No email found with that ID in emails array:", emails.map(e => e.id));
+      }
+    }
+  }, [selectedMailId, selectedEmail]);
 
   const handleComposeClick = () => {
     setIsComposing(true);
