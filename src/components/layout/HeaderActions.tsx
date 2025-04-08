@@ -60,12 +60,7 @@ const HeaderActions = ({ onAction }: HeaderActionsProps) => {
           />
         ))}
 
-        {/* Settings Icon */}
-        <ActionIcon
-          icon={<Settings size={20} />}
-          tooltip="Settings"
-          onClick={() => setShowSettings(true)}
-        />
+        {/* Settings Icon removed to avoid duplication - using the one in Header.tsx */}
 
         {/* More Menu */}
         <div className="relative">
