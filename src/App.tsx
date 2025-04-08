@@ -169,6 +169,7 @@ function App() {
         onRefreshClick={refreshEmails}
         isRefreshing={isRefreshing}
         onContactsClick={() => setShowContacts(true)}
+        selectedEmail={!!selectedEmail}
       />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar 

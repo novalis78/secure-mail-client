@@ -8,9 +8,10 @@ interface HeaderProps {
   onRefreshClick?: () => void;
   isRefreshing?: boolean;
   onContactsClick?: () => void;
+  selectedEmail?: boolean;
 }
 
-const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false, onContactsClick }: HeaderProps) => {
+const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false, onContactsClick, selectedEmail = false }: HeaderProps) => {
   const handleAction = (action: string) => {
     // Handle different actions
     switch (action) {
@@ -138,7 +139,7 @@ const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false,
                 }}
               />
             </div>
-            <HeaderActions onAction={handleAction} />
+            {selectedEmail && <HeaderActions onAction={handleAction} />}
           </div>
         </div>
       </header>
