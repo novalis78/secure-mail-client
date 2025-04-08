@@ -76,7 +76,7 @@ const MailList = ({ emails = [], selectedMailId, onSelectMail }: MailListProps) 
       {/* Search Bar */}
       <div className="px-4 py-3 border-b border-[#0c1c3d] bg-[#041024]" style={{ boxShadow: 'inset 0 -1px 0 0 rgba(6, 46, 93, 0.2)' }}>
         <div className="relative">
-          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+          <div className="absolute inset-y-0 flex items-center pointer-events-none" style={{ left: '0.75rem' }}>
             <Search className="h-3.5 w-3.5 text-[#526583]" />
           </div>
           <input
