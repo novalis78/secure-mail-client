@@ -230,10 +230,10 @@ export class ImapService {
                     textSample: typeof parsed.text === 'string' ? parsed.text.substring(0, 100) + '...' : null
                   });
 
-                  // Enhanced PGP detection logic - using our stringified content
-                  const text = textContent;
+                  // Enhanced PGP detection logic
+                  const text = typeof parsed.text === 'string' ? parsed.text : '';
                   const subject = parsed.subject || '';
-                  const html = htmlContent;
+                  const html = typeof parsed.html === 'string' ? parsed.html : '';
                   
                   // Check for PGP content in various message parts
                   const isPGP = 
