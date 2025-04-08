@@ -38,11 +38,14 @@ const Sidebar = ({ activePath, setActivePath, onComposeClick }: SidebarProps) =>
             <li key={item.path}>
               <button
                 onClick={() => setActivePath(item.path)}
-                className={`w-full flex items-center gap-2 p-2 rounded-lg cursor-pointer text-left ${
+                className={`w-full flex items-center gap-2 p-2 rounded-lg cursor-pointer text-left transition-all duration-200 ${
                   activePath === item.path 
-                    ? 'bg-accent-green/30 text-white font-medium border border-accent-green/40' 
-                    : 'text-gray-400 hover:bg-hover-dark hover:text-gray-300'
+                    ? 'bg-gradient-to-l from-[#0c1c3d]/80 to-[#12d992]/20 text-white font-medium border-r-2 border-[#12d992] shadow-[0_2px_12px_rgba(12,28,61,0.3)]' 
+                    : 'text-gray-400 hover:bg-gradient-to-l hover:from-[#0c1c3d]/50 hover:to-transparent hover:text-gray-300 hover:-translate-x-0.5'
                 }`}
+                style={activePath === item.path ? {
+                  boxShadow: '0 2px 8px rgba(12, 28, 61, 0.3), inset 0 1px 0 0 rgba(193, 209, 247, 0.05)'
+                } : {}}
               >
                 <div className={activePath === item.path ? 'text-accent-green' : ''}>
                   {item.icon}
