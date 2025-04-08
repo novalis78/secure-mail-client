@@ -15,6 +15,7 @@ export interface Mail {
   date: Date;
   text?: string;
   html?: string | null;
+  body?: string;  // Add body field based on console output
   labelIds?: string[];
   folder?: string;
 }

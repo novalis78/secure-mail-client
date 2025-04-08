@@ -254,9 +254,10 @@ const MailDetail = ({ email }: MailDetailProps) => {
     console.log("Rendering PGP content, email.text:", email.text ? `${email.text.slice(0, 50)}...` : "null");
     console.log("Email HTML content available:", email.html ? `${email.html.slice(0, 50)}...` : "null");
     
-    // Get the content to display - use HTML content if text isn't available
-    const emailContent = email.text || email.html;
+    // Get the content to display - use body field first, then fall back to text/html
+    const emailContent = email.body || email.text || email.html;
     
+    console.log("MailDetail debug - body available:", typeof email.body, email.body ? `Length: ${email.body.length}` : "null");
     console.log("MailDetail debug - text type:", typeof email.text);
     console.log("MailDetail debug - html type:", typeof email.html);
     console.log("MailDetail debug - Email content after OR check:", emailContent ? "present" : "missing");
@@ -275,15 +276,17 @@ const MailDetail = ({ email }: MailDetailProps) => {
               subject: {email.subject}<br/>
               text: {email.text ? 'present' : 'null'}<br/>
               html: {email.html ? 'present' : 'null'}<br/>
+              body: {email.body ? 'present' : 'null'}<br/>
             </p>
           </div>
         </div>
       );
     }
     
-    // Get the content to use - prefer text but fall back to HTML if needed
+    // Get the content to use - prefer body first, then text, then HTML
     // Force string conversion in case we get unexpected types
-    const contentToUse = typeof email.text === 'string' ? email.text : 
+    const contentToUse = typeof email.body === 'string' ? email.body :
+                       typeof email.text === 'string' ? email.text : 
                        typeof email.html === 'string' ? email.html : "";
     
     // Use our improved extraction function to find PGP content

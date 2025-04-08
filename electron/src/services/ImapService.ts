@@ -275,6 +275,9 @@ export class ImapService {
                     // Log whether we found any content
                     console.log(`Found email with content: text=${!!textContent}, html=${!!htmlContent}, id=${parsed.messageId}`);
                     
+                    // Get the email body from console output
+                    const emailBody = text || html;
+                    
                     messages.push({
                       id: parsed.messageId || `${Date.now()}-${processedCount}`,
                       from: parsed.from?.text || 'Unknown',
@@ -282,15 +285,17 @@ export class ImapService {
                       status: 'NEW',
                       isEncrypted: true,
                       date: parsed.date || new Date(),
-                      text: textContent || undefined,
-                      html: htmlContent || undefined
+                      text: text || undefined,
+                      html: html || undefined,
+                      body: emailBody // Add body field
                     });
                     
                     // Log the actual message being pushed
                     console.log('Email content being pushed:', {
                       messageId: parsed.messageId,
-                      textLength: textContent.length,
-                      htmlLength: htmlContent.length
+                      textLength: text.length,
+                      htmlLength: html.length,
+                      bodyLength: emailBody.length
                     });
                   }
                   resolveMsg();
@@ -332,7 +337,8 @@ export class ImapService {
                 const serializedMessages = sortedMessages.map(message => ({
                   ...message,
                   text: message.text ? String(message.text) : "",
-                  html: message.html ? String(message.html) : ""
+                  html: message.html ? String(message.html) : "",
+                  body: message.body ? String(message.body) : ""
                 }));
                 
                 this.mainWindow.webContents.send('imap:emails-fetched', serializedMessages);
