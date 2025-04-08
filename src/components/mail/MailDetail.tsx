@@ -371,10 +371,10 @@ const MailDetail = ({ email }: MailDetailProps) => {
           
           <div className="p-4 w-full">
             {isDecrypted ? (
-              // Decrypted Content - Enhanced with better visuals
               <div className="space-y-4">
+                {/* Decrypted Content - Enhanced with better visuals */}
                 <div className="relative">
-                  // Security badge overlay
+                  {/* Security badge overlay */}
                   <div className="absolute -top-3 -right-2 z-10">
                     <div className="bg-accent-green text-white text-xs px-2 py-1 rounded shadow-md shadow-accent-green/20 flex items-center">
                       <Shield size={10} className="mr-1" />
@@ -382,9 +382,9 @@ const MailDetail = ({ email }: MailDetailProps) => {
                     </div>
                   </div>
                   
-                  // Main content with secure decoration
+                  {/* Main content with secure decoration */}
                   <div className="bg-gradient-to-b from-accent-green/10 to-accent-green/5 border border-accent-green/20 rounded-lg p-5 shadow-md relative overflow-hidden">
-                    // Decorative security pattern
+                    {/* Decorative security pattern */}
                     <div className="absolute inset-0 overflow-hidden opacity-5">
                       <div className="absolute top-0 right-0 h-full w-1/2">
                         {Array.from({ length: 8 }).map((_, i) => (
@@ -398,18 +398,18 @@ const MailDetail = ({ email }: MailDetailProps) => {
                       </div>
                     </div>
                     
-                    // Actual content
+                    {/* Actual content */}
                     <div className="relative">
-                      <div className="whitespace-pre-wrap break-words text-gray-200 leading-relaxed">
+                      <div className="whitespace-pre-wrap break-words text-gray-200 leading-relaxed overflow-auto max-h-[400px]">
                         {decryptedContent}
                       </div>
                     </div>
                   </div>
                 </div>
                 
-                // Status and actions bar
+                {/* Status and actions bar */}
                 <div className="flex flex-col space-y-3 pt-1">
-                  // Security info with details
+                  {/* Security info with details */}
                   <div className="bg-base-dark border border-border-dark rounded-lg p-2.5 flex justify-between items-center">
                     <div className="flex items-center space-x-3">
                       <div className="bg-accent-green/10 p-1.5 rounded-full">
@@ -445,7 +445,7 @@ const MailDetail = ({ email }: MailDetailProps) => {
                     </div>
                   </div>
                   
-                  // Actions bar
+                  {/* Actions bar */}
                   <div className="flex justify-end space-x-2 text-xs">
                     <button className="bg-secondary-dark hover:bg-secondary-dark/80 text-gray-400 hover:text-gray-300 px-3 py-1.5 rounded-md transition-colors flex items-center">
                       <FileText size={12} className="mr-1.5" />
@@ -463,9 +463,9 @@ const MailDetail = ({ email }: MailDetailProps) => {
                 </div>
               </div>
             ) : (
-              // Encrypted Content
               <div className="space-y-4">
-                // Encrypted message visualization - inspired by TV show UI
+              {/* Encrypted Content */}
+                {/* Encrypted message visualization - inspired by TV show UI */}
                 <div className="bg-base-dark border border-border-dark rounded-lg p-4 font-mono">
                   <div className="space-y-3">
                     <div className="text-accent-green text-xs font-bold animate-pulse">-----BEGIN PGP MESSAGE-----</div>

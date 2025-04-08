@@ -59,27 +59,26 @@ function App() {
             await window.electron.imap.fetchEmails();
           } else {
             console.error('Failed to connect with stored credentials:', connectResult.error);
-            // Only show settings as a last resort if connection fails
-            setShowSettings(true);
+            // Don't automatically show settings dialog on startup
+            // Just log the error and let user click settings if they want
           }
         } catch (connectError) {
           console.error('Error connecting with stored credentials:', connectError);
-          setShowSettings(true);
+          // Don't automatically show settings dialog on startup
         }
       } else {
         // Only fetch emails (let the backend handle connection if possible)
         const result = await window.electron.imap.fetchEmails();
         
-        // If fetching still failed and it's due to connection, show settings
-        if (!result.success && result.error?.includes('Not connected to IMAP server')) {
-          console.log('Connection required but no credentials found, showing settings dialog');
-          setShowSettings(true);
+        // Even if fetching failed, don't automatically show settings
+        if (!result.success) {
+          console.log('Connection required but no credentials found');
+          // Don't automatically show settings dialog on startup
         }
       }
     } catch (error) {
       console.error('Error during refresh process:', error);
-      // Only show settings as a last resort
-      setShowSettings(true);
+      // Don't automatically show settings dialog on startup
     } finally {
       // Always reset the refreshing state when done
       setIsRefreshing(false);
@@ -142,7 +141,7 @@ function App() {
         {/* Resizable Layout */}
         <div className="flex flex-1 relative">
           {/* Email List Panel */}
-          <div className="flex-shrink-0 w-mail-list min-w-[280px] max-w-[550px] border-r border-border-dark flex flex-col h-full overflow-hidden">
+          <div className="flex-shrink-0 w-[350px] min-w-[280px] max-w-[550px] border-r border-border-dark flex flex-col h-full overflow-hidden">
             <MailList 
               emails={emails}
               selectedMailId={selectedMailId}
@@ -198,14 +197,21 @@ function App() {
           </div>
 
           {/* Main Content Panel */}
-          <main className="flex-1 bg-base-dark overflow-auto w-full">
+          <main className="flex-1 bg-base-dark overflow-auto w-full flex">
             {isComposing ? (
               <ComposeEmail onCancel={() => setIsComposing(false)} />
             ) : selectedEmail ? (
               <MailDetail email={selectedEmail} />
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
-                <p>Select an email to view its contents</p>
+              <div className="flex flex-col items-center justify-center w-full h-full text-center text-gray-500 px-4">
+                <div className="flex items-center justify-center w-16 h-16 mb-4 bg-secondary-dark/50 rounded-full">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                  </svg>
+                </div>
+                <p className="text-sm font-medium mb-2">No message selected</p>
+                <p className="text-xs text-gray-600 max-w-md mx-auto">Select an email from the list to view its contents</p>
               </div>
             )}
           </main>

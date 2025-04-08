@@ -235,7 +235,7 @@ const MailList = ({ emails = [], selectedMailId, onSelectMail }: MailListProps) 
                       )}
                     </div>
                   </div>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 overflow-hidden w-full pr-2">
                     <div className="space-y-1.5">
                       <p className={`text-xs font-medium tracking-wide ${
                         selectedMailId === mail.id 
@@ -249,7 +249,7 @@ const MailList = ({ emails = [], selectedMailId, onSelectMail }: MailListProps) 
                       } : {}}
                       >{mail.from.length > 25 ? mail.from.substring(0, 25) + '...' : mail.from}</p>
                       
-                      <p className={`text-xs truncate font-medium ${
+                      <p className={`text-xs font-medium ${
                         selectedMailId === mail.id 
                           ? 'text-[#c1d1f7]/90' 
                           : hoveredItemId === mail.id
@@ -261,45 +261,47 @@ const MailList = ({ emails = [], selectedMailId, onSelectMail }: MailListProps) 
                       } : {}}
                       >{mail.subject}</p>
                     </div>
-                    <div className="flex items-center justify-between mt-1.5">
-                      <div className="flex items-center gap-2">
-                        {mail.status === 'NEW' ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[#f3c677]/10 text-[#f3c677] border border-[#f3c677]/20"
-                          style={{
-                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)'
-                          }}>
-                            New
-                          </span>
-                        ) : (
-                          <span className="text-[#526583]/80 text-xs flex items-center space-x-1">
-                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
-                            <span>Read</span>
-                          </span>
-                        )}
-                        
-                        {mail.folder && mail.folder !== 'INBOX' && (
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-medium 
-                            ${mail.folder === 'SENT' ? 'bg-[#12d992]/10 text-[#12d992] border border-[#12d992]/20' :
-                              mail.folder === 'DRAFT' ? 'bg-[#6b7280]/10 text-[#9ca3af] border border-[#6b7280]/20' :
-                              'bg-[#6b7280]/10 text-[#9ca3af] border border-[#6b7280]/20'}`}
-                          style={{
-                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)'
-                          }}>
-                            {mail.folder}
-                          </span>
-                        )}
-                      </div>
+                    {/* Status badges row */}
+                    <div className="flex items-center gap-2 mt-1.5">
+                      {mail.status === 'NEW' ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[#f3c677]/10 text-[#f3c677] border border-[#f3c677]/20"
+                        style={{
+                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)'
+                        }}>
+                          New
+                        </span>
+                      ) : (
+                        <span className="text-[#526583]/80 text-xs flex items-center space-x-1">
+                          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                          </svg>
+                          <span>Read</span>
+                        </span>
+                      )}
                       
-                      <p className="text-xs text-[#526583]/80 pl-1">
+                      {mail.folder && mail.folder !== 'INBOX' && (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-medium 
+                          ${mail.folder === 'SENT' ? 'bg-[#12d992]/10 text-[#12d992] border border-[#12d992]/20' :
+                            mail.folder === 'DRAFT' ? 'bg-[#6b7280]/10 text-[#9ca3af] border border-[#6b7280]/20' :
+                            'bg-[#6b7280]/10 text-[#9ca3af] border border-[#6b7280]/20'}`}
+                        style={{
+                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)'
+                        }}>
+                          {mail.folder}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Date row */}
+                    <div className="flex justify-end w-full mt-2">
+                      <div className="text-[9px] text-[#526583]/70 bg-[#0c1c3d]/30 px-2 py-0.5 rounded-sm">
                         {mail.date 
                           ? new Date(mail.date instanceof Date ? mail.date : new Date(mail.date)).toLocaleDateString(undefined, {
                               month: 'short',
                               day: 'numeric'
                             })
                           : ''}
-                      </p>
+                      </div>
                     </div>
                   </div>
                 </div>
