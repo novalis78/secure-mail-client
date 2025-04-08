@@ -8,7 +8,32 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "electron:build": "vite build && electron-builder"
+    "electron:build": "vite build && electron-builder",
+    "build:mac": "vite build && electron-builder --mac",
+    "build:win": "vite build && electron-builder --win",
+    "build:linux": "vite build && electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.securemailclient.app",
+    "productName": "Secure Mail Client",
+    "files": ["dist/**/*", "dist-electron/**/*"],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "mac": {
+      "icon": "build/icons/icon.icns",
+      "target": ["dmg", "zip"]
+    },
+    "win": {
+      "icon": "build/icons/icon.ico",
+      "target": ["nsis", "portable"]
+    },
+    "linux": {
+      "icon": "build/icons",
+      "target": ["AppImage", "deb"],
+      "category": "Office"
+    }
   },
   "dependencies": {
     "@heroicons/react": "^2.1.1",

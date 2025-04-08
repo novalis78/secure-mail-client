@@ -54,6 +54,9 @@ function createWindow() {
     mainWindow = new electron_1.BrowserWindow({
         width: 1200,
         height: 800,
+        titleBarStyle: 'hidden',
+        frame: false,
+        icon: path.join(__dirname, isDev ? '../../public/icon.png' : '../build/icons/icon.png'),
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
@@ -70,7 +73,52 @@ function createWindow() {
     credentialService = new CredentialService_1.CredentialService();
     imapService = new ImapService_1.ImapService(mainWindow);
     pgpService = new PGPService_1.PGPService();
-    oauthService = new OAuthService_1.OAuthService(mainWindow);
+    // Initialize OAuth service with error handling
+    try {
+        oauthService = new OAuthService_1.OAuthService(mainWindow);
+    }
+    catch (error) {
+        console.error('Error initializing OAuth service:', error);
+        // We'll continue without OAuth services
+    }
+    // Automatically try to connect with saved credentials on startup
+    setTimeout(async () => {
+        try {
+            // Check if we have stored credentials
+            const storedConfig = credentialService?.getImapCredentials();
+            if (storedConfig && storedConfig.email && storedConfig.password) {
+                console.log('Attempting to connect with stored credentials:', {
+                    email: storedConfig.email,
+                    host: storedConfig.host,
+                    port: storedConfig.port
+                });
+                // Adapt the credential format to what ImapService expects
+                await imapService?.connect({
+                    user: storedConfig.email,
+                    password: storedConfig.password,
+                    host: storedConfig.host || 'imap.gmail.com', // Default to Gmail if not specified
+                    port: storedConfig.port || 993 // Default to standard IMAP SSL port if not specified
+                });
+                // Add a slight delay before fetching emails to ensure connection is fully established
+                setTimeout(async () => {
+                    try {
+                        console.log('Auto-fetching emails after connection');
+                        await imapService?.fetchPGPEmails();
+                    }
+                    catch (fetchError) {
+                        console.error('Error auto-fetching emails after connection:', fetchError);
+                    }
+                }, 2000);
+            }
+            else {
+                console.log('No stored IMAP credentials found for auto-connection');
+            }
+        }
+        catch (error) {
+            console.error('Error auto-connecting with stored credentials:', error);
+            // We'll let the user connect manually
+        }
+    }, 2500); // Increase delay to ensure UI is fully loaded
 }
 // IMAP IPC handlers
 electron_1.ipcMain.handle('imap:connect', async (_, config) => {
@@ -85,6 +133,27 @@ electron_1.ipcMain.handle('imap:connect', async (_, config) => {
 });
 electron_1.ipcMain.handle('imap:fetch-emails', async () => {
     try {
+        // If not connected, try to use stored credentials
+        if (!imapService || !imapService.isConnected) {
+            console.log('IMAP not connected during fetch request, trying to connect with stored credentials');
+            const storedConfig = credentialService?.getImapCredentials();
+            if (storedConfig && storedConfig.email && storedConfig.password) {
+                console.log('Found stored credentials, attempting to connect');
+                await imapService?.connect({
+                    user: storedConfig.email,
+                    password: storedConfig.password,
+                    host: storedConfig.host || 'imap.gmail.com',
+                    port: storedConfig.port || 993
+                });
+                // Allow a brief moment for connection to stabilize
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            else {
+                console.log('No stored credentials found, user needs to connect manually');
+                return { success: false, error: 'Not connected to IMAP server. Please connect in settings.' };
+            }
+        }
+        // Now try to fetch emails
         const emails = await imapService?.fetchPGPEmails();
         return { success: true, emails };
     }
@@ -256,9 +325,17 @@ electron_1.ipcMain.handle('credentials:clear', async () => {
 });
 // OAuth IPC handlers
 electron_1.ipcMain.handle('oauth:check-auth', async () => {
+    if (!oauthService) {
+        console.warn('OAuth service not initialized, oauth:check-auth called');
+        return {
+            success: false,
+            isAuthenticated: false,
+            error: 'OAuth service not available. Check credentials.json file.'
+        };
+    }
     try {
-        const authStatus = oauthService?.checkAuthentication();
-        return authStatus || { success: false, isAuthenticated: false, error: 'OAuth service not initialized' };
+        const authStatus = oauthService.checkAuthentication();
+        return authStatus;
     }
     catch (error) {
         console.error('Error checking OAuth authentication:', error);
@@ -266,9 +343,16 @@ electron_1.ipcMain.handle('oauth:check-auth', async () => {
     }
 });
 electron_1.ipcMain.handle('oauth:authenticate', async () => {
+    if (!oauthService) {
+        console.warn('OAuth service not initialized, oauth:authenticate called');
+        return {
+            success: false,
+            error: 'OAuth service not available. Check credentials.json file.'
+        };
+    }
     try {
-        const authResult = await oauthService?.authenticate();
-        return authResult || { success: false, error: 'OAuth service not initialized' };
+        const authResult = await oauthService.authenticate();
+        return authResult;
     }
     catch (error) {
         console.error('Error during OAuth authentication:', error);
@@ -276,9 +360,16 @@ electron_1.ipcMain.handle('oauth:authenticate', async () => {
     }
 });
 electron_1.ipcMain.handle('oauth:logout', async () => {
+    if (!oauthService) {
+        console.warn('OAuth service not initialized, oauth:logout called');
+        return {
+            success: false,
+            error: 'OAuth service not available. Check credentials.json file.'
+        };
+    }
     try {
-        const logoutResult = await oauthService?.logout();
-        return logoutResult || { success: false, error: 'OAuth service not initialized' };
+        const logoutResult = await oauthService.logout();
+        return logoutResult;
     }
     catch (error) {
         console.error('Error during OAuth logout:', error);
@@ -286,13 +377,21 @@ electron_1.ipcMain.handle('oauth:logout', async () => {
     }
 });
 electron_1.ipcMain.handle('oauth:fetch-emails', async () => {
+    if (!oauthService) {
+        console.warn('OAuth service not initialized, oauth:fetch-emails called');
+        return {
+            success: false,
+            emails: [],
+            error: 'OAuth service not available. Check credentials.json file.'
+        };
+    }
     try {
-        const emailsResult = await oauthService?.fetchEmails();
+        const emailsResult = await oauthService.fetchEmails();
         // If emails were successfully fetched, also notify via the IMAP service's event system
-        if (emailsResult?.success && emailsResult.emails && mainWindow) {
+        if (emailsResult.success && emailsResult.emails && mainWindow) {
             mainWindow.webContents.send('imap:emails-fetched', emailsResult.emails);
         }
-        return emailsResult || { success: false, emails: [], error: 'OAuth service not initialized' };
+        return emailsResult;
     }
     catch (error) {
         console.error('Error fetching emails with OAuth:', error);
@@ -300,9 +399,16 @@ electron_1.ipcMain.handle('oauth:fetch-emails', async () => {
     }
 });
 electron_1.ipcMain.handle('oauth:send-email', async (_, { to, subject, body }) => {
+    if (!oauthService) {
+        console.warn('OAuth service not initialized, oauth:send-email called');
+        return {
+            success: false,
+            error: 'OAuth service not available. Check credentials.json file.'
+        };
+    }
     try {
-        const sendResult = await oauthService?.sendEmail(to, subject, body);
-        return sendResult || { success: false, error: 'OAuth service not initialized' };
+        const sendResult = await oauthService.sendEmail(to, subject, body);
+        return sendResult;
     }
     catch (error) {
         console.error('Error sending email with OAuth:', error);

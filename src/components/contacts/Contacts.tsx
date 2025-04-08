@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X, Plus, Search, ExternalLink, Lock, Copy, Key, RefreshCw, Shield, Mail, AlertCircle, Globe } from 'lucide-react';
 
 interface Contact {

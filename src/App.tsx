@@ -50,8 +50,8 @@ function App() {
         try {
           // Try to connect first
           const connectResult = await window.electron.imap.connect({
-            user: credentialsResult.credentials.email,
-            password: credentialsResult.credentials.password,
+            user: credentialsResult.credentials.email || '',
+            password: credentialsResult.credentials.password || '',
             host: credentialsResult.credentials.host || 'imap.gmail.com',
             port: credentialsResult.credentials.port || 993
           });

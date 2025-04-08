@@ -18,7 +18,23 @@ electron_1.contextBridge.exposeInMainWorld('electron', {
         onConnected: (callback) => electron_1.ipcRenderer.on('imap:connected', (_) => callback()),
         onDisconnected: (callback) => electron_1.ipcRenderer.on('imap:disconnected', (_) => callback()),
         onError: (callback) => electron_1.ipcRenderer.on('imap:error', (_, error) => callback(error)),
-        onEmailsFetched: (callback) => electron_1.ipcRenderer.on('imap:emails-fetched', (_, emails) => callback(emails)),
+        onEmailsFetched: (callback) => electron_1.ipcRenderer.on('imap:emails-fetched', (_, emails) => {
+            // Debug log to check emails content when crossing IPC boundary
+            console.log("PRELOAD: Emails crossing IPC boundary:", emails.length);
+            if (emails.length > 0) {
+                const sample = emails[0];
+                console.log("PRELOAD: First email sample:", {
+                    id: sample.id,
+                    subject: sample.subject,
+                    hasText: typeof sample.text === 'string',
+                    textLength: sample.text ? String(sample.text).length : 0,
+                    hasHtml: typeof sample.html === 'string',
+                    htmlLength: sample.html ? String(sample.html).length : 0,
+                    textSample: sample.text ? sample.text.substring(0, 100) : null
+                });
+            }
+            callback(emails);
+        }),
         // Add these new handlers
         onProgress: (callback) => electron_1.ipcRenderer.on('imap:progress', (_, progress) => callback(progress)),
         onStatus: (callback) => electron_1.ipcRenderer.on('imap:status', (_, status) => callback(status))

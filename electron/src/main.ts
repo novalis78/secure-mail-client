@@ -12,6 +12,9 @@ dotenv.config();
 // Development environment check
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true';
 
+// Set application name for better identification
+app.name = 'Secure Mail Client';
+
 let mainWindow: BrowserWindow | null = null;
 let imapService: ImapService | null = null;
 let pgpService: PGPService | null = null;
@@ -24,12 +27,18 @@ function createWindow() {
     height: 800,
     titleBarStyle: 'hidden',
     frame: false,
+    icon: path.join(__dirname, '../../public/icon.png'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')
     }
   });
+  
+  // Set application icon programmatically (macOS)
+  if (process.platform === 'darwin') {
+    app.dock.setIcon(path.join(__dirname, '../../public/icon.png'));
+  }
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
@@ -405,7 +414,18 @@ ipcMain.on('oauth:code-cancelled', () => {
   mainWindow?.webContents.emit('oauth:code-cancelled');
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  // Set dock icon immediately on macOS
+  if (process.platform === 'darwin') {
+    try {
+      app.dock.setIcon(path.join(__dirname, '../../public/icon.png'));
+    } catch (error) {
+      console.error('Failed to set dock icon:', error);
+    }
+  }
+  
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   imapService?.disconnect();
