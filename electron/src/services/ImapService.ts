@@ -58,6 +58,7 @@ export interface ImapEmail {
   date: Date;
   text?: string;
   html?: string | null;
+  body?: string;  // Add body field to match frontend interface
 }
 
 function encryptPassword(password: string): Promise<string> {
