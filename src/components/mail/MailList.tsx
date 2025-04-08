@@ -75,15 +75,14 @@ const MailList = ({ emails = [], selectedMailId, onSelectMail }: MailListProps) 
     <div className="h-full flex flex-col bg-[#030b1a]">
       {/* Search Bar */}
       <div className="px-4 py-3 border-b border-[#0c1c3d] bg-[#041024]" style={{ boxShadow: 'inset 0 -1px 0 0 rgba(6, 46, 93, 0.2)' }}>
-        <div className="relative">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
-            <Search className="h-3.5 w-3.5 text-[#526583]" />
+        <div className="flex items-center relative bg-[#041024] rounded-lg border border-[#0c1c3d] overflow-hidden focus-within:ring-1 focus-within:ring-[#12d992]/30" style={{ boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.15)' }}>
+          <div className="pl-4 pr-2 flex items-center justify-center pointer-events-none">
+            <Search className="h-3.5 w-3.5 min-w-[14px] text-[#526583]" />
           </div>
           <input
             type="search"
             placeholder="Search secure emails..."
-            className="w-full bg-[#041024] text-white pl-11 pr-4 py-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#12d992]/30 border border-[#0c1c3d] placeholder-[#526583] text-xs"
-            style={{ boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.15)' }}
+            className="w-full bg-transparent text-white py-2 pr-4 outline-none border-none text-xs placeholder-[#526583]"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
