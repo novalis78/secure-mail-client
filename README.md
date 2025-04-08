@@ -4,6 +4,8 @@
 
 Secure Mail Client is a high-security email application that ensures privacy and confidentiality for your communications. It leverages PGP (Pretty Good Privacy) encryption to provide end-to-end encryption for all your messages. Connect it to your Gmail account or other IMAP server, and it will focus on PGP encrypted emails ONLY, ignoring the rest - making SMC the perfect choice for everyone who values digital privacy.
 
+**Visit our website: [https://securemailclient.com](https://securemailclient.com)** - For downloads, detailed documentation, and the latest updates.
+
 ---
 
 ## Features
