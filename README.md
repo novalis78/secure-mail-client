@@ -1,5 +1,7 @@
 # Secure Mail Client
 
+![Secure Mail Client](./public/secure-mail-client-screenshot.png)
+
 Secure Mail Client is a high-security email application that ensures privacy and confidentiality for your communications. It leverages PGP (Pretty Good Privacy) encryption to provide end-to-end encryption for all your messages. Connect it to your Gmail account or other IMAP server, and it will focus on PGP encrypted emails ONLY, ignoring the rest - making SMC the perfect choice for everyone who values digital privacy.
 
 ---
@@ -23,24 +25,34 @@ Secure Mail Client is a high-security email application that ensures privacy and
 - **Read/Unread Message Filters:** Easily sort your inbox based on message status
 - **Dark Theme Security Focus:** Clean interface with security-oriented visual design 
 - **Responsive Design:** Adapts to different screen sizes and device types
+- **Multiple Decryption Methods:** Choose between passphrase or YubiKey decryption with a user-friendly interface
+- **Content Visualization:** Clearly formatted PGP message display with syntax highlighting
+
+### Recent Updates
+- **Improved UI Design:** Enhanced contrast and visual appeal across the application
+- **Streamlined Startup:** Removed automatic settings dialog on startup for better user experience
+- **Frameless Window:** Modern, clean appearance without the standard Electron toolbar
+- **Fixed Email Body Display:** Ensures all email content is properly displayed in the detail view
+- **Enhanced YubiKey Integration:** Complete redesign of YubiKey settings with modern tabbed interface
+- **Full-Width Settings:** Improved Key Management and YubiKey settings panels for better information display
 
 ---
 
-<!-- ## Screenshots
+## Screenshots and Features
 
-### Inbox View
-![Inbox](screenshots/inbox-view.png)
-The inbox provides a clean and organized view of all your emails with the option to filter by read or unread messages.
+### Secure Email Display
+The application provides a beautiful, security-focused interface for viewing encrypted emails with clear PGP message formatting and decryption options.
 
-### PGP Message
-![PGP Decryption](screenshots/pgp-decryption.png)
-Shows a decrypted PGP message with a progress bar to indicate the status of decryption.
+### Key Management
+The Key Management interface allows you to generate, import, and manage your PGP keys with a user-friendly design.
 
-### Sidebar Navigation
-![Sidebar Navigation](screenshots/sidebar-navigation.png)
-A simple and easy-to-navigate sidebar to manage drafts, sent emails, archived messages, and starred items.
+### YubiKey Integration
+The YubiKey settings provide a modern, tabbed interface for managing hardware security keys with Status, Setup, and Info sections.
 
---- -->
+### Security Status Indicators
+Visual indicators throughout the application provide clear feedback on the encryption status of messages and current security level.
+
+---
 
 ## Installation
 
@@ -58,7 +70,7 @@ A simple and easy-to-navigate sidebar to manage drafts, sent emails, archived me
    ```
 4. Run the application:
    ```bash
-   npm start
+   npm run dev
    ```
 
 ---
