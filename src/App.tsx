@@ -92,6 +92,21 @@ function App() {
     }
 
     window.electron.imap.onEmailsFetched((fetchedEmails: Mail[]) => {
+      console.log("Emails fetched event received, count:", fetchedEmails.length);
+      
+      // Log the first email to debug content issues
+      if (fetchedEmails.length > 0) {
+        const firstEmail = fetchedEmails[0];
+        console.log("First fetched email debug:", {
+          id: firstEmail.id,
+          subject: firstEmail.subject,
+          hasText: typeof firstEmail.text === 'string',
+          textLength: firstEmail.text ? String(firstEmail.text).length : 0,
+          hasHtml: typeof firstEmail.html === 'string',
+          htmlLength: firstEmail.html ? String(firstEmail.html).length : 0
+        });
+      }
+      
       setEmails(fetchedEmails);
       setIsRefreshing(false);
     });

@@ -257,6 +257,10 @@ const MailDetail = ({ email }: MailDetailProps) => {
     // Get the content to display - use HTML content if text isn't available
     const emailContent = email.text || email.html;
     
+    console.log("MailDetail debug - text type:", typeof email.text);
+    console.log("MailDetail debug - html type:", typeof email.html);
+    console.log("MailDetail debug - Email content after OR check:", emailContent ? "present" : "missing");
+    
     // Display empty state if no content is available at all
     if (!emailContent) {
       return (
@@ -278,7 +282,9 @@ const MailDetail = ({ email }: MailDetailProps) => {
     }
     
     // Get the content to use - prefer text but fall back to HTML if needed
-    const contentToUse = email.text || email.html || "";
+    // Force string conversion in case we get unexpected types
+    const contentToUse = typeof email.text === 'string' ? email.text : 
+                       typeof email.html === 'string' ? email.html : "";
     
     // Use our improved extraction function to find PGP content
     const pgpMessageBlock = extractPGPMessage(contentToUse);

@@ -268,6 +268,13 @@ export class ImapService {
                     /\bsecure message\b/i.test(subject);
 
                   if (isPGP) {
+                    // Important: Make a stringified copy of the content to ensure it's passed properly
+                    const textContent = typeof parsed.text === 'string' ? String(parsed.text) : '';
+                    const htmlContent = typeof parsed.html === 'string' ? String(parsed.html) : '';
+                    
+                    // Log whether we found any content
+                    console.log(`Found email with content: text=${!!textContent}, html=${!!htmlContent}, id=${parsed.messageId}`);
+                    
                     messages.push({
                       id: parsed.messageId || `${Date.now()}-${processedCount}`,
                       from: parsed.from?.text || 'Unknown',
@@ -275,8 +282,15 @@ export class ImapService {
                       status: 'NEW',
                       isEncrypted: true,
                       date: parsed.date || new Date(),
-                      text: parsed.text || undefined,
-                      html: parsed.html || null
+                      text: textContent || undefined,
+                      html: htmlContent || undefined
+                    });
+                    
+                    // Log the actual message being pushed
+                    console.log('Email content being pushed:', {
+                      messageId: parsed.messageId,
+                      textLength: textContent.length,
+                      htmlLength: htmlContent.length
                     });
                   }
                   resolveMsg();
