@@ -230,10 +230,10 @@ export class ImapService {
                     textSample: typeof parsed.text === 'string' ? parsed.text.substring(0, 100) + '...' : null
                   });
 
-                  // Enhanced PGP detection logic
-                  const text = parsed.text || '';
+                  // Enhanced PGP detection logic - using our stringified content
+                  const text = textContent;
                   const subject = parsed.subject || '';
-                  const html = parsed.html || '';
+                  const html = htmlContent;
                   
                   // Check for PGP content in various message parts
                   const isPGP = 
@@ -310,7 +310,32 @@ export class ImapService {
             Promise.all(messagePromises)
               .then(() => {
                 const sortedMessages = messages.sort((a, b) => b.date.getTime() - a.date.getTime());
-                this.mainWindow.webContents.send('imap:emails-fetched', sortedMessages);
+                
+                // Log message content before sending across IPC
+                console.log(`MAIN PROCESS: Sending ${sortedMessages.length} emails to renderer`);
+                if (sortedMessages.length > 0) {
+                  const sample = sortedMessages[0];
+                  console.log('MAIN PROCESS: First email content check:', {
+                    id: sample.id,
+                    subject: sample.subject,
+                    textExists: !!sample.text,
+                    textType: typeof sample.text,
+                    textLength: sample.text ? sample.text.length : 0,
+                    htmlExists: !!sample.html,
+                    htmlType: typeof sample.html,
+                    htmlLength: sample.html ? sample.html.length : 0,
+                    textSample: sample.text ? sample.text.substring(0, 200) : 'NO TEXT CONTENT'
+                  });
+                }
+                
+                // Clone the messages to ensure they're properly serializable
+                const serializedMessages = sortedMessages.map(message => ({
+                  ...message,
+                  text: message.text ? String(message.text) : "",
+                  html: message.html ? String(message.html) : ""
+                }));
+                
+                this.mainWindow.webContents.send('imap:emails-fetched', serializedMessages);
                 resolve(sortedMessages);
               })
               .catch(err => {

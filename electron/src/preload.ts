@@ -21,7 +21,23 @@ contextBridge.exposeInMainWorld('electron', {
     onError: (callback: (error: string) => void) => 
       ipcRenderer.on('imap:error', (_, error: string) => callback(error)),
     onEmailsFetched: (callback: (emails: any[]) => void) => 
-      ipcRenderer.on('imap:emails-fetched', (_, emails: any[]) => callback(emails)),
+      ipcRenderer.on('imap:emails-fetched', (_, emails: any[]) => {
+        // Debug log to check emails content when crossing IPC boundary
+        console.log("PRELOAD: Emails crossing IPC boundary:", emails.length);
+        if (emails.length > 0) {
+          const sample = emails[0];
+          console.log("PRELOAD: First email sample:", {
+            id: sample.id,
+            subject: sample.subject,
+            hasText: typeof sample.text === 'string',
+            textLength: sample.text ? String(sample.text).length : 0,
+            hasHtml: typeof sample.html === 'string',
+            htmlLength: sample.html ? String(sample.html).length : 0,
+            textSample: sample.text ? sample.text.substring(0, 100) : null
+          });
+        }
+        callback(emails);
+      }),
     // Add these new handlers
     onProgress: (callback: (progress: { current: number; total: number }) => void) =>
       ipcRenderer.on('imap:progress', (_, progress) => callback(progress)),
