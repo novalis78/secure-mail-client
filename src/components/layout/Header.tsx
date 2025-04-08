@@ -150,10 +150,7 @@ const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false 
         </div>
       )}
       
-      {/* Version Number */}
-      <div className="absolute top-4 right-4 text-xs text-gray-600">
-        v2.872
-      </div>
+      {/* Version number removed - using the one in the footer instead */}
     </div>
   );
 };
