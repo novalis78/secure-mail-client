@@ -67,13 +67,26 @@ contextBridge.exposeInMainWorld('electron', {
       ipcRenderer.invoke('pgp:set-default-key', params),
     deleteKey: (params: { fingerprint: string }) => 
       ipcRenderer.invoke('pgp:delete-key', params),
-    encryptMessage: (params: { message: string; recipientFingerprints: string[] }) => 
-      ipcRenderer.invoke('pgp:encrypt-message', params),
+    encryptMessage: (params: { 
+      message: string; 
+      recipientFingerprints: string[]; 
+      options?: { sign?: boolean; attachPublicKey?: boolean; passphrase?: string } 
+    }) => ipcRenderer.invoke('pgp:encrypt-message', params),
     decryptMessage: (params: { encryptedMessage: string; passphrase: string }) => 
-      ipcRenderer.invoke('pgp:decrypt-message', params)
+      ipcRenderer.invoke('pgp:decrypt-message', params),
+    signMessage: (params: { message: string; passphrase: string }) => 
+      ipcRenderer.invoke('pgp:sign-message', params),
+    addContact: (params: { email: string; name?: string; publicKey?: string }) => 
+      ipcRenderer.invoke('pgp:add-contact', params),
+    extractKeyFromMessage: (params: { message: string }) => 
+      ipcRenderer.invoke('pgp:extract-key-from-message', params)
   },
   yubikey: {
-    detect: () => ipcRenderer.invoke('yubikey:detect')
+    detect: () => ipcRenderer.invoke('yubikey:detect'),
+    hasPGPKeys: () => ipcRenderer.invoke('yubikey:has-pgp-keys'),
+    getPGPFingerprints: () => ipcRenderer.invoke('yubikey:get-pgp-fingerprints'),
+    exportPublicKeys: () => ipcRenderer.invoke('yubikey:export-public-keys'),
+    importToPGP: () => ipcRenderer.invoke('yubikey:import-to-pgp')
   },
   credentials: {
     saveGmail: (params: { email: string; password: string }) => 

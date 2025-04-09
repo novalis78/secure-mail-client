@@ -57,10 +57,17 @@ electron_1.contextBridge.exposeInMainWorld('electron', {
         setDefaultKey: (params) => electron_1.ipcRenderer.invoke('pgp:set-default-key', params),
         deleteKey: (params) => electron_1.ipcRenderer.invoke('pgp:delete-key', params),
         encryptMessage: (params) => electron_1.ipcRenderer.invoke('pgp:encrypt-message', params),
-        decryptMessage: (params) => electron_1.ipcRenderer.invoke('pgp:decrypt-message', params)
+        decryptMessage: (params) => electron_1.ipcRenderer.invoke('pgp:decrypt-message', params),
+        signMessage: (params) => electron_1.ipcRenderer.invoke('pgp:sign-message', params),
+        addContact: (params) => electron_1.ipcRenderer.invoke('pgp:add-contact', params),
+        extractKeyFromMessage: (params) => electron_1.ipcRenderer.invoke('pgp:extract-key-from-message', params)
     },
     yubikey: {
-        detect: () => electron_1.ipcRenderer.invoke('yubikey:detect')
+        detect: () => electron_1.ipcRenderer.invoke('yubikey:detect'),
+        hasPGPKeys: () => electron_1.ipcRenderer.invoke('yubikey:has-pgp-keys'),
+        getPGPFingerprints: () => electron_1.ipcRenderer.invoke('yubikey:get-pgp-fingerprints'),
+        exportPublicKeys: () => electron_1.ipcRenderer.invoke('yubikey:export-public-keys'),
+        importToPGP: () => electron_1.ipcRenderer.invoke('yubikey:import-to-pgp')
     },
     credentials: {
         saveGmail: (params) => electron_1.ipcRenderer.invoke('credentials:save-gmail', params),

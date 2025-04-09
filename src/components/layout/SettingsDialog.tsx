@@ -1160,9 +1160,28 @@ const YubiKeySettings = () => {
   const [isDetecting, setIsDetecting] = useState(false);
   const [keyDetected, setKeyDetected] = useState(false);
   const [keyInfo, setKeyInfo] = useState<null | {
-    serial: string;
-    version: string;
-    pgpKeyId: string;
+    serial?: string;
+    version?: string;
+    formFactor?: string;
+    interfaces?: string[];
+    applications?: Record<string, string>;
+    pgpInfo?: {
+      versionPGP?: string;
+      versionApp?: string;
+      pinTriesRemaining?: number;
+      signatureKey?: {
+        fingerprint?: string;
+        touchPolicy?: string;
+      };
+      decryptionKey?: {
+        fingerprint?: string;
+        touchPolicy?: string;
+      };
+      authenticationKey?: {
+        fingerprint?: string;
+        touchPolicy?: string;
+      };
+    };
   }>(null);
   const [autoDetect, setAutoDetect] = useState(true);
   const [useNFC, setUseNFC] = useState(false);
@@ -1193,9 +1212,12 @@ const YubiKeySettings = () => {
         setKeyDetected(result.yubikey.detected);
         if (result.yubikey.detected) {
           setKeyInfo({
-            serial: result.yubikey.serial || '9876543210',
-            version: result.yubikey.version || '5.4.3',
-            pgpKeyId: result.yubikey.pgpKeyId || 'AEC8F3D2B1'
+            serial: result.yubikey.serial,
+            version: result.yubikey.version,
+            formFactor: result.yubikey.formFactor,
+            interfaces: result.yubikey.interfaces,
+            applications: result.yubikey.applications,
+            pgpInfo: result.yubikey.pgpInfo
           });
         }
       } else {
@@ -1307,12 +1329,16 @@ const YubiKeySettings = () => {
                     </div>
                     <div className="space-y-2">
                       <div>
-                        <div className="text-[9px] text-gray-500 uppercase tracking-wider">PGP Key ID</div>
-                        <div className="text-sm text-white font-mono">{keyInfo?.pgpKeyId}</div>
+                        <div className="text-[9px] text-gray-500 uppercase tracking-wider">PGP Keys</div>
+                        <div className="text-sm text-white font-mono">
+                          {keyInfo?.pgpInfo?.signatureKey?.fingerprint ? 
+                            keyInfo.pgpInfo.signatureKey.fingerprint.substring(keyInfo.pgpInfo.signatureKey.fingerprint.length - 8) : 
+                            (keyInfo?.pgpInfo?.versionPGP === "N/A" ? "Not Configured" : "None")}
+                        </div>
                       </div>
                       <div>
-                        <div className="text-[9px] text-gray-500 uppercase tracking-wider">Status</div>
-                        <div className="text-sm text-accent-green font-medium">Active & Operational</div>
+                        <div className="text-[9px] text-gray-500 uppercase tracking-wider">Form Factor</div>
+                        <div className="text-sm text-accent-green font-medium">{keyInfo?.formFactor || "USB Device"}</div>
                       </div>
                     </div>
                   </div>
@@ -1322,7 +1348,7 @@ const YubiKeySettings = () => {
                   <button
                     onClick={handleDetectYubiKey}
                     disabled={isDetecting}
-                    className={`flex items-center justify-center gap-2 text-[10px] px-3 py-1.5 rounded-lg bg-accent-green/20 text-accent-green border border-accent-green/30 hover:bg-accent-green/30 transition-colors ${
+                    className={`flex items-center justify-center gap-2 text-[10px] px-3 py-1.5 rounded-lg bg-blue-500/20 text-white border border-blue-500/30 hover:bg-blue-500/30 transition-colors ${
                       isDetecting ? 'opacity-70 cursor-not-allowed' : ''
                     }`}
                   >

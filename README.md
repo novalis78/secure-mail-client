@@ -15,12 +15,28 @@ Secure Mail Client is a high-security email application that ensures privacy and
 - **YubiKey Integration:** Hardware security module support for enhanced protection
 - **Tiered Security Model:** Works with or without hardware keys, adapting security level dynamically
 - **Zero Plain-Text Storage:** All credentials and sensitive data are always encrypted at rest
+- **Automatic Message Signing:** All outgoing emails are cryptographically signed when PGP is enabled
+- **Public Key Exchange:** Your public key is automatically attached to outgoing emails for easy key exchange
+- **Progressive Security:** Always signed, encrypted when possible, ensuring maximum security for every message
 
 ### Email Security
 - **Intelligent PGP Detection:** Automatically identifies encrypted emails in any mailbox
 - **Secure Inbox:** Stores all emails in an encrypted format to prevent unauthorized access
 - **Visual Security Indicators:** Clear visual feedback on encryption status of all messages
 - **Real-time Decryption Progress:** Visual feedback during message decryption operations
+- **Key Extraction Technology:** Automatically extracts public keys from received emails
+- **Layered Encryption Strategy:** Always signs messages, encrypts them when recipient keys are available
+- **Cryptographic Authentication:** Verifies the sender's identity through digital signatures
+- **Never Send Naked Emails:** Even when "unencrypted," messages are signed for authenticity verification
+
+### Contact Management & Key Discovery
+- **Automatic Contact Creation:** Adds recipients to contacts when emailing for the first time
+- **Contact-Key Association:** Maintains relationships between contacts and their public keys
+- **Smart Name Extraction:** Intelligently derives names from email addresses for new contacts
+- **One-Click Key Import:** Easily import received public keys into your secure keyring
+- **Key Status Visualization:** Shows which contacts have public keys available for encryption
+- **Comprehensive Key Information:** Views fingerprints, creation dates, and trust levels at a glance
+- **Contact Organization:** Grid and table views for managing your secure contact network
 
 ### User Experience
 - **Modern Three-Panel Layout:** Intuitive navigation with folders, message list, and content views
@@ -29,6 +45,10 @@ Secure Mail Client is a high-security email application that ensures privacy and
 - **Responsive Design:** Adapts to different screen sizes and device types
 - **Multiple Decryption Methods:** Choose between passphrase or YubiKey decryption with a user-friendly interface
 - **Content Visualization:** Clearly formatted PGP message display with syntax highlighting
+- **Full-Screen Mode:** Application launches maximized for optimal workspace utilization
+- **Intuitive Compose Interface:** Clean, horizontally-stacked design for email composition
+- **Powerful Recipient Search:** Find contacts and their keys directly in the compose interface
+- **Security Status Feedback:** Clear indicators showing when messages will be encrypted
 
 ### Recent Updates
 - **Improved UI Design:** Enhanced contrast and visual appeal across the application
@@ -37,6 +57,10 @@ Secure Mail Client is a high-security email application that ensures privacy and
 - **Fixed Email Body Display:** Ensures all email content is properly displayed in the detail view
 - **Enhanced YubiKey Integration:** Complete redesign of YubiKey settings with modern tabbed interface
 - **Full-Width Settings:** Improved Key Management and YubiKey settings panels for better information display
+- **Automatic Email Signing:** All messages now signed with your PGP key when available
+- **Public Key Distribution:** Your public key automatically attached to emails for easier encryption adoption
+- **Enhanced Compose Interface:** Redesigned email creation with clear security indicators and contact search
+- **Contact Database Building:** Automatically adds email recipients to your secure contact list
 
 ---
 

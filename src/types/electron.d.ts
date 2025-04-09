@@ -75,11 +75,17 @@ export interface PGPAPI {
   
   encryptMessage: (params: { 
     message: string; 
-    recipientFingerprints: string[] 
+    recipientFingerprints: string[];
+    options?: {
+      sign?: boolean;
+      attachPublicKey?: boolean;
+      passphrase?: string;
+    }
   }) => Promise<{ 
     success: boolean; 
     encryptedMessage?: string; 
-    error?: string 
+    error?: string;
+    yubiKeyDetected?: boolean;
   }>;
   
   decryptMessage: (params: { 
@@ -90,6 +96,41 @@ export interface PGPAPI {
     decryptedMessage?: string; 
     error?: string 
   }>;
+  
+  signMessage: (params: {
+    message: string;
+    passphrase: string;
+  }) => Promise<{
+    success: boolean;
+    signedMessage?: string;
+    originalMessage?: string;
+    error?: string;
+    needsPin?: boolean;
+    status?: 'ready' | 'signing' | 'complete' | 'failed';
+    yubiKeyDetected?: boolean;
+  }>;
+  
+  addContact: (params: {
+    email: string;
+    name?: string;
+    publicKey?: string;
+  }) => Promise<{
+    success: boolean;
+    fingerprint?: string;
+    error?: string;
+  }>;
+  
+  extractKeyFromMessage: (params: {
+    message: string;
+  }) => Promise<{
+    success: boolean;
+    found: boolean;
+    publicKey?: string;
+    fingerprint?: string;
+    email?: string;
+    name?: string;
+    error?: string;
+  }>;
 }
 
 export interface YubikeyAPI {
@@ -97,10 +138,68 @@ export interface YubikeyAPI {
     success: boolean;
     yubikey?: {
       detected: boolean;
-      serial: string;
-      version: string;
-      pgpKeyId: string;
+      serial?: string;
+      version?: string;
+      formFactor?: string;
+      interfaces?: string[];
+      applications?: Record<string, string>;
+      pgpInfo?: {
+        versionPGP?: string;
+        versionApp?: string;
+        pinTriesRemaining?: number;
+        signatureKey?: {
+          fingerprint?: string;
+          touchPolicy?: string;
+        };
+        decryptionKey?: {
+          fingerprint?: string;
+          touchPolicy?: string;
+        };
+        authenticationKey?: {
+          fingerprint?: string;
+          touchPolicy?: string;
+        };
+      };
     };
+    error?: string;
+  }>;
+
+  hasPGPKeys: () => Promise<{
+    success: boolean;
+    hasPGPKeys?: boolean;
+    error?: string;
+  }>;
+
+  getPGPFingerprints: () => Promise<{
+    success: boolean;
+    fingerprints?: {
+      signature?: string;
+      decryption?: string;
+      authentication?: string;
+    };
+    error?: string;
+  }>;
+  
+  exportPublicKeys: () => Promise<{
+    success: boolean;
+    keys?: {
+      signature?: string;
+      decryption?: string;
+      authentication?: string;
+    };
+    error?: string;
+    yubiKeyDetected: boolean;
+  }>;
+  
+  importToPGP: () => Promise<{
+    success: boolean;
+    importResults?: Array<{
+      type: string;
+      fingerprint?: string;
+      success: boolean;
+      error?: string;
+    }>;
+    defaultKeySet?: boolean;
     error?: string;
   }>;
 }

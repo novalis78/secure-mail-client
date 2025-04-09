@@ -40,29 +40,48 @@ const ImapService_1 = require("./services/ImapService");
 const PGPService_1 = require("./services/PGPService");
 const CredentialService_1 = require("./services/CredentialService");
 const OAuthService_1 = require("./services/OAuthService");
+const YubiKeyService_1 = require("./services/YubiKeyService");
 // For loading .env files
 const dotenv = __importStar(require("dotenv"));
 dotenv.config();
 // Development environment check
 const isDev = !electron_1.app.isPackaged || process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true';
+// Set application name for better identification
+electron_1.app.name = 'Secure Mail Client';
 let mainWindow = null;
 let imapService = null;
 let pgpService = null;
 let credentialService = null;
 let oauthService = null;
+let yubiKeyService = null;
 function createWindow() {
+    // Use absolute path for icon
+    const appDir = electron_1.app.getAppPath();
+    const iconPath = path.join(appDir, 'public/icon.png');
+    console.log('Setting app icon from path:', iconPath);
     mainWindow = new electron_1.BrowserWindow({
         width: 1200,
         height: 800,
         titleBarStyle: 'hidden',
         frame: false,
-        icon: path.join(__dirname, isDev ? '../../public/icon.png' : '../build/icons/icon.png'),
+        icon: iconPath,
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
             preload: path.join(__dirname, 'preload.js')
         }
     });
+    // Start the app in maximized/full screen mode
+    mainWindow.maximize();
+    // Set application icon programmatically (macOS)
+    if (process.platform === 'darwin') {
+        try {
+            electron_1.app.dock.setIcon(iconPath);
+        }
+        catch (error) {
+            console.error('Failed to set dock icon in window creation:', error);
+        }
+    }
     if (isDev) {
         mainWindow.loadURL('http://localhost:5173');
         mainWindow.webContents.openDevTools();
@@ -73,6 +92,128 @@ function createWindow() {
     credentialService = new CredentialService_1.CredentialService();
     imapService = new ImapService_1.ImapService(mainWindow);
     pgpService = new PGPService_1.PGPService();
+    yubiKeyService = new YubiKeyService_1.YubiKeyService();
+    // Check and integrate YubiKey PGP keys if available
+    setTimeout(async () => {
+        try {
+            if (yubiKeyService && pgpService) {
+                console.log('[main] Checking for YubiKey PGP keys');
+                // Detect YubiKey
+                const yubiKeyInfo = await yubiKeyService.detectYubiKey();
+                if (yubiKeyInfo.detected && yubiKeyInfo.pgpInfo) {
+                    console.log('[main] YubiKey detected with PGP info');
+                    // For debugging, list the fingerprints
+                    const fingerprintInfo = {
+                        signature: yubiKeyInfo.pgpInfo.signatureKey?.fingerprint,
+                        decryption: yubiKeyInfo.pgpInfo.decryptionKey?.fingerprint,
+                        authentication: yubiKeyInfo.pgpInfo.authenticationKey?.fingerprint
+                    };
+                    console.log('[main] YubiKey PGP fingerprints:', JSON.stringify(fingerprintInfo, null, 2));
+                    // Check the current PGP keys
+                    const currentKeys = pgpService.getPublicKeys();
+                    console.log('[main] Current PGP key count:', currentKeys?.length || 0);
+                    // If we don't have any PGP keys yet, automatically import from YubiKey
+                    if (!currentKeys || currentKeys.length === 0) {
+                        console.log('[main] No PGP keys found in store, importing from YubiKey');
+                        // Call our function directly instead of using IPC
+                        const importResult = await yubiKeyService.exportPublicKeys();
+                        if (importResult.success && importResult.keys) {
+                            console.log('[main] Successfully exported YubiKey keys, importing to PGP store');
+                            // Now import each key
+                            const importResults = [];
+                            let defaultKeySet = false;
+                            // Process signature key
+                            if (importResult.keys.signature) {
+                                try {
+                                    const fingerprint = await pgpService.importPublicKey(importResult.keys.signature);
+                                    importResults.push({ type: 'signature', fingerprint, success: true });
+                                    // Mark the key as coming from YubiKey
+                                    pgpService.markKeyAsYubiKey(fingerprint);
+                                    // Set the first key as default
+                                    if (!defaultKeySet) {
+                                        pgpService.setDefaultKey(fingerprint);
+                                        defaultKeySet = true;
+                                    }
+                                }
+                                catch (error) {
+                                    importResults.push({
+                                        type: 'signature',
+                                        success: false,
+                                        error: error instanceof Error ? error.message : 'Unknown error'
+                                    });
+                                }
+                            }
+                            // Process decryption key
+                            if (importResult.keys.decryption) {
+                                try {
+                                    const fingerprint = await pgpService.importPublicKey(importResult.keys.decryption);
+                                    importResults.push({ type: 'decryption', fingerprint, success: true });
+                                    // Mark the key as coming from YubiKey
+                                    pgpService.markKeyAsYubiKey(fingerprint);
+                                    if (!defaultKeySet) {
+                                        pgpService.setDefaultKey(fingerprint);
+                                        defaultKeySet = true;
+                                    }
+                                }
+                                catch (error) {
+                                    importResults.push({
+                                        type: 'decryption',
+                                        success: false,
+                                        error: error instanceof Error ? error.message : 'Unknown error'
+                                    });
+                                }
+                            }
+                            // Process authentication key
+                            if (importResult.keys.authentication) {
+                                try {
+                                    const fingerprint = await pgpService.importPublicKey(importResult.keys.authentication);
+                                    importResults.push({ type: 'authentication', fingerprint, success: true });
+                                    // Mark the key as coming from YubiKey
+                                    pgpService.markKeyAsYubiKey(fingerprint);
+                                    if (!defaultKeySet) {
+                                        pgpService.setDefaultKey(fingerprint);
+                                        defaultKeySet = true;
+                                    }
+                                }
+                                catch (error) {
+                                    importResults.push({
+                                        type: 'authentication',
+                                        success: false,
+                                        error: error instanceof Error ? error.message : 'Unknown error'
+                                    });
+                                }
+                            }
+                            const successCount = importResults.filter((r) => r.success).length;
+                            console.log('[main] Imported keys:', successCount, 'key(s)');
+                            if (defaultKeySet) {
+                                console.log('[main] Default key has been set');
+                            }
+                        }
+                        else {
+                            console.warn('[main] Failed to export YubiKey keys:', importResult.error);
+                        }
+                    }
+                    else {
+                        // If we have keys, check if we need to set a default
+                        const hasDefault = currentKeys.some(key => key.isDefault);
+                        if (!hasDefault) {
+                            console.log('[main] No default key set, setting first key as default');
+                            try {
+                                pgpService.setDefaultKey(currentKeys[0].fingerprint);
+                                console.log('[main] Set default key to:', currentKeys[0].fingerprint);
+                            }
+                            catch (defaultError) {
+                                console.error('[main] Error setting default key:', defaultError);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch (error) {
+            console.error('[main] Error checking YubiKey PGP keys:', error);
+        }
+    }, 3000); // Delay to ensure services are initialized
     // Initialize OAuth service with error handling
     try {
         oauthService = new OAuthService_1.OAuthService(mainWindow);
@@ -223,9 +364,9 @@ electron_1.ipcMain.handle('pgp:delete-key', (_, { fingerprint }) => {
         return { success: false, error: error.message };
     }
 });
-electron_1.ipcMain.handle('pgp:encrypt-message', async (_, { message, recipientFingerprints }) => {
+electron_1.ipcMain.handle('pgp:encrypt-message', async (_, { message, recipientFingerprints, options }) => {
     try {
-        const encryptedMessage = await pgpService?.encryptMessage(message, recipientFingerprints);
+        const encryptedMessage = await pgpService?.encryptMessage(message, recipientFingerprints, options || { sign: true, attachPublicKey: true });
         return { success: true, encryptedMessage };
     }
     catch (error) {
@@ -243,21 +384,67 @@ electron_1.ipcMain.handle('pgp:decrypt-message', async (_, { encryptedMessage, p
         return { success: false, error: error.message };
     }
 });
-// YubiKey simulation for demo purposes
+// Add handlers for new PGP functionality
+electron_1.ipcMain.handle('pgp:sign-message', async (_, { message, passphrase }) => {
+    try {
+        if (!pgpService) {
+            return {
+                success: false,
+                originalMessage: message,
+                error: 'PGP service not initialized'
+            };
+        }
+        // The signMessage method now returns a complete result object
+        const result = await pgpService.signMessage(message, passphrase);
+        return result;
+    }
+    catch (error) {
+        console.error('PGP sign error:', error);
+        return {
+            success: false,
+            originalMessage: message,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        };
+    }
+});
+electron_1.ipcMain.handle('pgp:add-contact', async (_, { email, name, publicKey }) => {
+    try {
+        if (!pgpService) {
+            return { success: false, error: 'PGP service not initialized' };
+        }
+        // Need to await since addContact is now async
+        const result = await pgpService.addContact(email, name, publicKey);
+        return result;
+    }
+    catch (error) {
+        console.error('PGP add contact error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+});
+electron_1.ipcMain.handle('pgp:extract-key-from-message', async (_, { message }) => {
+    try {
+        const result = await pgpService?.extractPublicKeyFromMessage(message);
+        return { success: true, ...result };
+    }
+    catch (error) {
+        console.error('PGP extract key error:', error);
+        return { success: false, error: error.message };
+    }
+});
+// Real YubiKey detection and related functionality
 electron_1.ipcMain.handle('yubikey:detect', async () => {
     try {
-        // This is a simulated YubiKey detection
-        // In a real implementation, this would interact with the YubiKey hardware
-        await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate detection delay
-        const yubiKeyInfo = {
-            detected: true,
-            serial: "12345678",
-            version: "5.2.0",
-            pgpKeyId: "0xA1B2C3D4E5F6"
-        };
+        if (!yubiKeyService) {
+            throw new Error('YubiKey service not initialized');
+        }
+        // Detect the YubiKey
+        const yubiKeyInfo = await yubiKeyService.detectYubiKey();
         // Update credential service with YubiKey status
-        if (credentialService) {
+        if (credentialService && yubiKeyInfo.detected && yubiKeyInfo.serial) {
             credentialService.setYubiKeyConnected(true, yubiKeyInfo.serial);
+        }
+        else if (credentialService) {
+            credentialService.setYubiKeyConnected(false);
         }
         return {
             success: true,
@@ -269,6 +456,151 @@ electron_1.ipcMain.handle('yubikey:detect', async () => {
         if (credentialService) {
             credentialService.setYubiKeyConnected(false);
         }
+        return { success: false, error: error.message };
+    }
+});
+// Check if YubiKey has PGP keys configured
+electron_1.ipcMain.handle('yubikey:has-pgp-keys', async () => {
+    try {
+        if (!yubiKeyService) {
+            throw new Error('YubiKey service not initialized');
+        }
+        const hasPGPKeys = await yubiKeyService.hasPGPKeys();
+        return {
+            success: true,
+            hasPGPKeys
+        };
+    }
+    catch (error) {
+        console.error('Error checking YubiKey PGP keys:', error);
+        return { success: false, error: error.message };
+    }
+});
+// Get PGP fingerprints from YubiKey
+electron_1.ipcMain.handle('yubikey:get-pgp-fingerprints', async () => {
+    try {
+        if (!yubiKeyService) {
+            throw new Error('YubiKey service not initialized');
+        }
+        const fingerprints = await yubiKeyService.getPGPFingerprints();
+        return {
+            success: true,
+            fingerprints
+        };
+    }
+    catch (error) {
+        console.error('Error getting YubiKey PGP fingerprints:', error);
+        return { success: false, error: error.message };
+    }
+});
+// Export YubiKey public keys
+electron_1.ipcMain.handle('yubikey:export-public-keys', async () => {
+    try {
+        if (!yubiKeyService) {
+            throw new Error('YubiKey service not initialized');
+        }
+        const result = await yubiKeyService.exportPublicKeys();
+        return result;
+    }
+    catch (error) {
+        console.error('Error exporting YubiKey public keys:', error);
+        return { success: false, error: error.message };
+    }
+});
+// Import YubiKey keys to PGP store
+electron_1.ipcMain.handle('yubikey:import-to-pgp', async () => {
+    try {
+        if (!yubiKeyService || !pgpService) {
+            throw new Error('Required services not initialized');
+        }
+        // Export keys from YubiKey
+        const exportResult = await yubiKeyService.exportPublicKeys();
+        if (!exportResult.success || !exportResult.keys) {
+            return {
+                success: false,
+                error: exportResult.error || 'Failed to export keys from YubiKey'
+            };
+        }
+        const importResults = [];
+        let defaultKeySet = false;
+        // Try to import all available keys
+        if (exportResult.keys.signature) {
+            try {
+                console.log('[main] Importing YubiKey signature key');
+                const fingerprint = await pgpService.importPublicKey(exportResult.keys.signature);
+                importResults.push({ type: 'signature', fingerprint, success: true });
+                // Mark the key as coming from YubiKey
+                pgpService.markKeyAsYubiKey(fingerprint);
+                // Set first successful key as default
+                if (!defaultKeySet) {
+                    pgpService.setDefaultKey(fingerprint);
+                    defaultKeySet = true;
+                    console.log('[main] Set signature key as default:', fingerprint);
+                }
+            }
+            catch (importError) {
+                console.error('[main] Error importing signature key:', importError);
+                importResults.push({
+                    type: 'signature',
+                    success: false,
+                    error: importError.message
+                });
+            }
+        }
+        if (exportResult.keys.decryption) {
+            try {
+                console.log('[main] Importing YubiKey decryption key');
+                const fingerprint = await pgpService.importPublicKey(exportResult.keys.decryption);
+                importResults.push({ type: 'decryption', fingerprint, success: true });
+                // Mark the key as coming from YubiKey
+                pgpService.markKeyAsYubiKey(fingerprint);
+                // Set first successful key as default if none set yet
+                if (!defaultKeySet) {
+                    pgpService.setDefaultKey(fingerprint);
+                    defaultKeySet = true;
+                    console.log('[main] Set decryption key as default:', fingerprint);
+                }
+            }
+            catch (importError) {
+                console.error('[main] Error importing decryption key:', importError);
+                importResults.push({
+                    type: 'decryption',
+                    success: false,
+                    error: importError.message
+                });
+            }
+        }
+        if (exportResult.keys.authentication) {
+            try {
+                console.log('[main] Importing YubiKey authentication key');
+                const fingerprint = await pgpService.importPublicKey(exportResult.keys.authentication);
+                importResults.push({ type: 'authentication', fingerprint, success: true });
+                // Mark the key as coming from YubiKey
+                pgpService.markKeyAsYubiKey(fingerprint);
+                // Set first successful key as default if none set yet
+                if (!defaultKeySet) {
+                    pgpService.setDefaultKey(fingerprint);
+                    defaultKeySet = true;
+                    console.log('[main] Set authentication key as default:', fingerprint);
+                }
+            }
+            catch (importError) {
+                console.error('[main] Error importing authentication key:', importError);
+                importResults.push({
+                    type: 'authentication',
+                    success: false,
+                    error: importError.message
+                });
+            }
+        }
+        return {
+            success: importResults.some(result => result.success),
+            importResults,
+            defaultKeySet
+        };
+    }
+    catch (error) {
+        console.error('Error importing YubiKey keys to PGP store:', error);
         return { success: false, error: error.message };
     }
 });
@@ -422,7 +754,22 @@ electron_1.ipcMain.on('oauth:code-response', (_, code) => {
 electron_1.ipcMain.on('oauth:code-cancelled', () => {
     mainWindow?.webContents.emit('oauth:code-cancelled');
 });
-electron_1.app.whenReady().then(createWindow);
+electron_1.app.whenReady().then(() => {
+    // Set dock icon immediately on macOS
+    if (process.platform === 'darwin') {
+        try {
+            // Fix path to use absolute path
+            const appDir = electron_1.app.getAppPath();
+            const iconPath = path.join(appDir, 'public/icon.png');
+            console.log('Setting dock icon from path:', iconPath);
+            electron_1.app.dock.setIcon(iconPath);
+        }
+        catch (error) {
+            console.error('Failed to set dock icon:', error);
+        }
+    }
+    createWindow();
+});
 electron_1.app.on('window-all-closed', () => {
     imapService?.disconnect();
     if (process.platform !== 'darwin') {
