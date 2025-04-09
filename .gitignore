@@ -34,3 +34,4 @@ pgp-keys/
 # Electron build
 out/
 dist-electron/
+release/
