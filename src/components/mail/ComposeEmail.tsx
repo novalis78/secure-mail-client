@@ -72,6 +72,13 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
 
   // Check for YubiKey when component mounts
   useEffect(() => {
+    // Track previous state to avoid unnecessary UI updates
+    let previousDetectionState = {
+      detected: false,
+      serial: '',
+      hasKeys: false
+    };
+    
     const detectYubiKey = async () => {
       if (!(window as any).electron?.yubikey) {
         console.warn('YubiKey API not available');
@@ -79,46 +86,60 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
       }
       
       try {
-        // Clear previous YubiKey state
-        setYubiKeyDetected(false);
-        setYubiKeyInfo(null);
-        setUseYubiKey(false);
+        // Don't clear previous state immediately - only update on actual changes
         
-        console.log('Checking for YubiKey presence...');
+        // Quietly check YubiKey status without logging or updating UI yet
         const result = await window.electron.yubikey.detect();
         
         if (result.success && result.yubikey) {
-          console.log('YubiKey detection result:', result.yubikey.detected ? 'Connected' : 'Not connected');
+          const isDetected = result.yubikey.detected;
+          const serialNumber = result.yubikey.serial || '';
           
-          // Update detection state
-          setYubiKeyDetected(result.yubikey.detected);
-          setYubiKeyInfo(result.yubikey);
-          
-          // Only enable YubiKey if it's detected AND has PGP keys
-          if (result.yubikey.detected) {
-            const hasKeys = await window.electron.yubikey.hasPGPKeys();
-            if (hasKeys.success && hasKeys.hasPGPKeys) {
-              console.log('YubiKey has PGP keys, enabling YubiKey features');
-              setUseYubiKey(true);
-            } else {
-              console.log('YubiKey detected but has no PGP keys');
-              setUseYubiKey(false);
-            }
-          } else {
-            console.log('YubiKey not detected, disabling YubiKey features');
-            setUseYubiKey(false);
+          // Check if has PGP keys, but only if detected
+          let hasKeys = false;
+          if (isDetected) {
+            const keysResult = await window.electron.yubikey.hasPGPKeys();
+            hasKeys = keysResult.success && keysResult.hasPGPKeys;
           }
-        } else {
-          console.log('YubiKey detection failed or returned no data');
+          
+          // Only update UI if there was a meaningful change in status
+          const detectionChanged = previousDetectionState.detected !== isDetected;
+          const serialChanged = previousDetectionState.serial !== serialNumber;
+          const keysChanged = previousDetectionState.hasKeys !== hasKeys;
+          
+          if (detectionChanged || serialChanged || keysChanged) {
+            console.log('YubiKey status changed:', 
+              isDetected ? 'Connected' : 'Not connected',
+              hasKeys ? 'with PGP keys' : 'without PGP keys'
+            );
+            
+            // Now update state since there was a change
+            setYubiKeyDetected(isDetected);
+            setYubiKeyInfo(result.yubikey);
+            setUseYubiKey(isDetected && hasKeys);
+            
+            // Update previous state for next comparison
+            previousDetectionState = {
+              detected: isDetected,
+              serial: serialNumber,
+              hasKeys: hasKeys
+            };
+          }
+        }
+      } catch (err) {
+        // Only log and update UI on actual errors, not just detection failures
+        if (previousDetectionState.detected) {
+          console.error('Error detecting YubiKey:', err);
           setYubiKeyDetected(false);
           setYubiKeyInfo(null);
           setUseYubiKey(false);
+          
+          previousDetectionState = {
+            detected: false,
+            serial: '',
+            hasKeys: false
+          };
         }
-      } catch (err) {
-        console.error('Error detecting YubiKey:', err);
-        setYubiKeyDetected(false);
-        setYubiKeyInfo(null);
-        setUseYubiKey(false);
       }
     };
     
@@ -126,7 +147,8 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
     detectYubiKey();
     
     // Set up periodic detection to catch YubiKey connect/disconnect
-    const detectInterval = setInterval(detectYubiKey, 10000); // Check every 10 seconds
+    // Increased to 15 seconds to reduce frequency and make it less intrusive
+    const detectInterval = setInterval(detectYubiKey, 15000);
     
     // Clean up interval on component unmount
     return () => clearInterval(detectInterval);

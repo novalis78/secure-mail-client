@@ -26,20 +26,37 @@ export function PinEntryDialog({
   // Focus the input when the dialog opens
   useEffect(() => {
     if (isOpen && inputRef.current) {
-      // Use a longer timeout to ensure the dialog is fully rendered
-      // and visible before attempting to focus
-      setTimeout(() => {
-        try {
-          inputRef.current?.focus();
-          // Force cursor to show by setting selection range
-          if (inputRef.current) {
-            const length = inputRef.current.value.length;
-            inputRef.current.setSelectionRange(length, length);
+      // Use a series of attempts to ensure the focus works
+      const focusAttempts = [50, 150, 300, 500];
+      
+      // Function to attempt focusing
+      const attemptFocus = (delay: number, attempt: number) => {
+        setTimeout(() => {
+          try {
+            if (inputRef.current) {
+              // Both focus and click to ensure mobile browsers show keyboard
+              inputRef.current.focus();
+              inputRef.current.click();
+              
+              // Force cursor to show by setting selection range
+              const length = inputRef.current.value.length;
+              inputRef.current.setSelectionRange(length, length);
+              
+              console.log(`PIN input focused on attempt ${attempt+1}`);
+            }
+          } catch (e) {
+            console.error(`Failed to focus PIN input on attempt ${attempt+1}:`, e);
+            
+            // Try again with next delay if available
+            if (attempt < focusAttempts.length - 1) {
+              attemptFocus(focusAttempts[attempt + 1], attempt + 1);
+            }
           }
-        } catch (e) {
-          console.error('Failed to focus PIN input:', e);
-        }
-      }, 150);
+        }, delay);
+      };
+      
+      // Start first attempt
+      attemptFocus(focusAttempts[0], 0);
     }
   }, [isOpen]);
 
@@ -60,11 +77,23 @@ export function PinEntryDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pin.trim()) {
+    
+    // Ensure latest PIN value
+    const currentPin = inputRef.current?.value || pin;
+    
+    if (!currentPin.trim()) {
       setError('PIN is required');
       return;
     }
-    onSubmit(pin);
+    
+    // Set a timeout to allow any pending input to complete
+    // This helps when the user tries to type and immediately submit
+    setTimeout(() => {
+      // Recheck the current value
+      const finalPin = inputRef.current?.value || currentPin;
+      console.log('Submitting PIN (length:', finalPin.length, ')');
+      onSubmit(finalPin);
+    }, 50);
   };
 
   return (
@@ -102,6 +131,7 @@ export function PinEntryDialog({
                 className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 placeholder="Enter your YubiKey PIN"
                 autoComplete="off"
+                autoFocus={true}
               />
               {error && <p className="text-xs text-red-500">{error}</p>}
             </div>
