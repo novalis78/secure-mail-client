@@ -576,6 +576,14 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
   };
   
   const handleSend = async () => {
+    // Direct approach to show YubiKeyHelper first - we'll add error handling after testing
+    if (yubiKeyInfo?.pgpInfo?.signatureKey?.fingerprint) {
+      console.log('Forcing YubiKeyHelper to appear for testing');
+      setPublicKeyMissing(true);
+      setShowYubiKeyHelper(true);
+      return;
+    }
+
     if (!recipient || !subject) {
       setError('Recipient and subject are required');
       return;
