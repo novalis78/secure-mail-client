@@ -1,6 +1,7 @@
 import { Lock, Send, X, User, Key, Paperclip, Loader, Search, Usb, AlertCircle, Check, Copy } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { PinEntryDialog } from '../ui/pin-entry-dialog';
+import { YubiKeyHelper } from '../ui/yubikey-helper';
 
 interface ComposeEmailProps {
   onCancel?: () => void;
@@ -69,6 +70,10 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
   const [showPinDialog, setShowPinDialog] = useState(false);
   const [pinDialogError, setPinDialogError] = useState<string | undefined>(undefined);
   const [processingStatus, setProcessingStatus] = useState<'idle' | 'encrypting' | 'signing' | 'sending'>('idle');
+  
+  // State for YubiKey Helper dialog
+  const [showYubiKeyHelper, setShowYubiKeyHelper] = useState(false);
+  const [publicKeyMissing, setPublicKeyMissing] = useState(false);
 
   // Check for YubiKey when component mounts
   useEffect(() => {
@@ -99,7 +104,7 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
           let hasKeys = false;
           if (isDetected) {
             const keysResult = await window.electron.yubikey.hasPGPKeys();
-            hasKeys = keysResult.success && keysResult.hasPGPKeys;
+            hasKeys = keysResult.success && (keysResult.hasPGPKeys || false);
           }
           
           // Only update UI if there was a meaningful change in status
@@ -182,7 +187,7 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
             setSearchingKeyOnline(true);
             setTimeout(() => {
               setSearchingKeyOnline(false);
-              setError('No PGP key found for recipient. Message cannot be encrypted.');
+              setError(`No PGP key found for recipient (${recipient}). Message cannot be encrypted to this user.`);
             }, 2000);
           } else {
             setError(null);
@@ -268,8 +273,8 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
         source: contact.source
       }]);
       
-      // Clear any previous errors about missing keys
-      if (error && error.includes('No PGP key found')) {
+      // Clear any previous errors about missing recipient keys
+      if (error && error.includes('No PGP key found for recipient')) {
         setError(null);
       }
     }
@@ -309,7 +314,11 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
   };
   
   // Sign with PIN
-  const handleSignWithPin = async (message: string, pin: string) => {
+  const handleSignWithPin = async (message: string, pin: string): Promise<{
+    success: boolean;
+    signedMessage: string;
+    error?: string;
+  }> => {
     if (!window.electron?.pgp) {
       throw new Error('PGP functionality not available');
     }
@@ -345,11 +354,24 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
       throw new Error('YubiKey was disconnected during signing. Please reconnect your YubiKey and try again.');
     }
     
+    // Check if the error indicates missing public key
+    if (!signResult.success && signResult.error && (
+      signResult.error.includes('Failed to import YubiKey signature key') ||
+      signResult.error.includes('No public key') ||
+      signResult.error.includes('GPG cannot access YubiKey keys')
+    )) {
+      // Show YubiKey helper dialog
+      setPublicKeyMissing(true);
+      setShowYubiKeyHelper(true);
+      throw new Error('Your YubiKey public key is not in your GPG keyring. Please import it first.');
+    }
+    
     if (signResult.success && signResult.signedMessage) {
       setSuccessMessage('Message signed successfully with YubiKey');
       return {
         success: true,
-        signedMessage: signResult.signedMessage
+        signedMessage: signResult.signedMessage,
+        error: undefined // Add this for TypeScript
       };
     } else if (signResult.needsPin) {
       // PIN was incorrect or not provided - should not happen here since we're providing a PIN
@@ -360,7 +382,11 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
   };
   
   // Encrypt with PIN
-  const handleEncryptWithPin = async (message: string, pin: string) => {
+  const handleEncryptWithPin = async (message: string, pin: string): Promise<{
+    success: boolean;
+    encryptedMessage: string;
+    error?: string;
+  }> => {
     if (!window.electron?.pgp) {
       throw new Error('PGP functionality not available');
     }
@@ -405,7 +431,8 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
       setSuccessMessage('Message encrypted successfully with YubiKey');
       return {
         success: true,
-        encryptedMessage: encryptResult.encryptedMessage
+        encryptedMessage: encryptResult.encryptedMessage,
+        error: undefined // Add this for TypeScript
       };
     } else {
       throw new Error(encryptResult.error || 'Failed to encrypt message');
@@ -604,18 +631,45 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
                 setIsLoading(false);
                 return; // Exit early - we'll continue after PIN is entered
               } else {
-                // Return the original message if signing fails for other reasons
-                console.warn('Could not sign message:', signResult.error);
-                if (signResult.error === 'No default key pair found for signing') {
-                  // This is a user education moment - they have PGP enabled but no keys set up
-                  console.info('No PGP keys configured. Please generate or import keys in settings.');
-                }
-                finalMessage = signResult.originalMessage || message;
+                // Check if the error is specifically about missing YubiKey public key
+              console.warn('Could not sign message:', signResult.error);
+              
+              // Special case for YubiKey public key missing
+              if (signResult.error && (
+                signResult.error.includes('YubiKey public key is not in your GPG keyring') ||
+                signResult.error.includes('Failed to import YubiKey signature key') ||
+                signResult.error.includes('No public key') ||
+                signResult.error.includes('GPG cannot access YubiKey keys')
+              )) {
+                console.log('Detected missing YubiKey public key error, showing helper');
+                setPublicKeyMissing(true);
+                setShowYubiKeyHelper(true);
+                setError('Your YubiKey public key is not in your GPG keyring. Please import it first.');
+                setIsLoading(false);
+                return; // Exit early to prevent email sending
+              } else if (signResult.error === 'No default key pair found for signing') {
+                // This is a user education moment - they have PGP enabled but no keys set up
+                console.info('No PGP keys configured. Please generate or import keys in settings.');
+              }
+              
+              finalMessage = signResult.originalMessage || message;
               }
             } catch (signError) {
               // Check if the error suggests a PIN is needed
               const errorMsg = signError instanceof Error ? signError.message : String(signError);
-              if (errorMsg.includes('PIN') || errorMsg.includes('pin')) {
+              
+              // Special case for YubiKey public key missing
+              if (errorMsg.includes('YubiKey public key is not in your GPG keyring') ||
+                  errorMsg.includes('Failed to import YubiKey signature key') ||
+                  errorMsg.includes('No public key') ||
+                  errorMsg.includes('GPG cannot access YubiKey keys')) {
+                console.log('Detected missing YubiKey public key error in exception, showing helper');
+                setPublicKeyMissing(true);
+                setShowYubiKeyHelper(true);
+                setError('Your YubiKey public key is not in your GPG keyring. Please import it first.');
+                setIsLoading(false);
+                return; // Exit early to prevent email sending
+              } else if (errorMsg.includes('PIN') || errorMsg.includes('pin')) {
                 // Show PIN dialog
                 setShowPinDialog(true);
                 setIsLoading(false);
@@ -704,6 +758,16 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
         message="Please enter your YubiKey PIN to continue with signing/encryption"
         errorMessage={pinDialogError}
       />
+      
+      {/* YubiKey Helper Dialog - show when public key is missing */}
+      {showYubiKeyHelper && yubiKeyInfo?.pgpInfo?.signatureKey?.fingerprint && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <YubiKeyHelper 
+            yubiKeyFingerprint={yubiKeyInfo.pgpInfo.signatureKey.fingerprint}
+            onClose={() => setShowYubiKeyHelper(false)}
+          />
+        </div>
+      )}
       
       {/* Email Header */}
       <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#0c1c3d]">
@@ -925,7 +989,8 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
                         </div>
                         <button 
                           className="text-[#526583] hover:text-gray-300"
-                          onClick={() => handleCopyFingerprint(yubiKeyInfo.pgpInfo.signatureKey.fingerprint)}
+                          onClick={() => yubiKeyInfo?.pgpInfo?.signatureKey?.fingerprint && 
+                            handleCopyFingerprint(yubiKeyInfo.pgpInfo.signatureKey.fingerprint)}
                         >
                           <Copy size={12} />
                         </button>
@@ -945,7 +1010,8 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
                         </div>
                         <button 
                           className="text-[#526583] hover:text-gray-300"
-                          onClick={() => handleCopyFingerprint(yubiKeyInfo.pgpInfo.decryptionKey.fingerprint)}
+                          onClick={() => yubiKeyInfo?.pgpInfo?.decryptionKey?.fingerprint && 
+                            handleCopyFingerprint(yubiKeyInfo.pgpInfo.decryptionKey.fingerprint)}
                         >
                           <Copy size={12} />
                         </button>
@@ -965,7 +1031,8 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
                         </div>
                         <button 
                           className="text-[#526583] hover:text-gray-300"
-                          onClick={() => handleCopyFingerprint(yubiKeyInfo.pgpInfo.authenticationKey.fingerprint)}
+                          onClick={() => yubiKeyInfo?.pgpInfo?.authenticationKey?.fingerprint && 
+                            handleCopyFingerprint(yubiKeyInfo.pgpInfo.authenticationKey.fingerprint)}
                         >
                           <Copy size={12} />
                         </button>
