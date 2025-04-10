@@ -312,7 +312,7 @@ Fingerprint: ${defaultKeyMeta.fingerprint}
 ${publicKeyArmored.split('-----BEGIN PGP PUBLIC KEY BLOCK-----')[1] || 'Public key unavailable'}`;
 
             // Check if this is specifically an error about missing public key
-            const errorLower = errorMsg.toLowerCase();
+            const errorLower = signResult.error ? signResult.error.toLowerCase() : '';
             if (errorLower.includes('failed to import yubikey signature key') || 
                 errorLower.includes('no public key') ||
                 errorLower.includes('gpg cannot access yubikey keys')) {
