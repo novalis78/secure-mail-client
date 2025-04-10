@@ -311,6 +311,21 @@ Fingerprint: ${defaultKeyMeta.fingerprint}
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 ${publicKeyArmored.split('-----BEGIN PGP PUBLIC KEY BLOCK-----')[1] || 'Public key unavailable'}`;
 
+            // Check if this is specifically an error about missing public key
+            const errorLower = errorMsg.toLowerCase();
+            if (errorLower.includes('failed to import yubikey signature key') || 
+                errorLower.includes('no public key') ||
+                errorLower.includes('gpg cannot access yubikey keys')) {
+              return {
+                success: false,
+                error: 'Your YubiKey public key is not in your GPG keyring. Please import it first.',
+                originalMessage: message,
+                status: 'failed',
+                yubiKeyDetected: yubiKeyDetected
+              };
+            }
+            
+            // Otherwise return a fallback message
             return {
               success: true, // We still consider this a success to allow sending the email
               signedMessage: fallbackMessage,
@@ -369,6 +384,21 @@ Fingerprint: ${defaultKeyMeta.fingerprint}
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 ${publicKeyArmored.split('-----BEGIN PGP PUBLIC KEY BLOCK-----')[1] || 'Public key unavailable'}`;
 
+          // Check if this is specifically an error about missing public key
+          const errorLower = errorMsg.toLowerCase();
+          if (errorLower.includes('failed to import yubikey signature key') || 
+              errorLower.includes('no public key') ||
+              errorLower.includes('gpg cannot access yubikey keys')) {
+            return {
+              success: false,
+              error: 'Your YubiKey public key is not in your GPG keyring. Please import it first.',
+              originalMessage: message,
+              status: 'failed',
+              yubiKeyDetected
+            };
+          }
+          
+          // Otherwise return a fallback message
           return {
             success: true, // We still consider this a success to allow sending the email
             signedMessage: fallbackMessage,
