@@ -49,13 +49,15 @@ const MailDetail = ({ email }: MailDetailProps) => {
       return;
     }
 
-    if (!email.text) {
+    // Check all possible content fields before giving up
+    const emailContent = email.text || email.body || email.html;
+    if (!emailContent) {
       setDecryptionError('No encrypted content available');
       return;
     }
 
     // Extract PGP message with our robust extraction function
-    const pgpMessage = extractPGPMessage(email.text);
+    const pgpMessage = extractPGPMessage(emailContent);
     
     if (!pgpMessage) {
       setDecryptionError('No valid PGP message found in content');
@@ -121,11 +123,18 @@ const MailDetail = ({ email }: MailDetailProps) => {
   // Helper function to extract PGP content from various formats
   const extractPGPMessage = (text: string | null): string | null => {
     if (!text) return null;
+    
+    console.log("Attempting to extract PGP message from content:", {
+      contentLength: text.length,
+      contentSample: text.substring(0, 100) + "..."
+    });
+    
     // Check for standard PGP message markers
     let pgpMessageStart = text.indexOf('-----BEGIN PGP MESSAGE-----');
     let pgpMessageEnd = text.indexOf('-----END PGP MESSAGE-----');
     
-    if (pgpMessageStart !== -1 && pgpMessageEnd !== -1) {
+    if (pgpMessageStart !== -1 && pgpMessageEnd !== -1 && pgpMessageEnd > pgpMessageStart) {
+      console.log("Found standard PGP message markers");
       return text.substring(pgpMessageStart, pgpMessageEnd + 25); // +25 to include the end marker
     }
     
@@ -133,29 +142,47 @@ const MailDetail = ({ email }: MailDetailProps) => {
     let pgpSignedStart = text.indexOf('-----BEGIN PGP SIGNED MESSAGE-----');
     let pgpSignedEnd = text.indexOf('-----END PGP SIGNATURE-----');
     
-    if (pgpSignedStart !== -1 && pgpSignedEnd !== -1) {
+    if (pgpSignedStart !== -1 && pgpSignedEnd !== -1 && pgpSignedEnd > pgpSignedStart) {
+      console.log("Found PGP signed message markers");
       return text.substring(pgpSignedStart, pgpSignedEnd + 26); // +26 to include the end marker
+    }
+    
+    // Check for standard PGP markers that might be formatted differently (e.g., with line breaks or spaces)
+    const cleanText = text.replace(/\s+/g, ' ');
+    pgpMessageStart = cleanText.indexOf('-----BEGIN PGP MESSAGE-----');
+    pgpMessageEnd = cleanText.indexOf('-----END PGP MESSAGE-----');
+    
+    if (pgpMessageStart !== -1 && pgpMessageEnd !== -1 && pgpMessageEnd > pgpMessageStart) {
+      console.log("Found PGP message markers in normalized text");
+      // Reconstruct the original message with proper formatting
+      const startPos = text.indexOf('-----BEGIN');
+      const endPos = text.lastIndexOf('-----END') + 30; // Approximate length to include the end marker
+      if (startPos !== -1 && endPos > startPos) {
+        return text.substring(startPos, endPos);
+      }
     }
     
     // Check for Mailvelope
     if (text.includes('Version: Mailvelope')) {
+      console.log("Found Mailvelope signature");
       const mailerStart = text.indexOf('Version: Mailvelope');
       const possibleStart = text.lastIndexOf('-----BEGIN', mailerStart - 100);
       const possibleEnd = text.indexOf('-----END', mailerStart);
       
-      if (possibleStart !== -1 && possibleEnd !== -1) {
+      if (possibleStart !== -1 && possibleEnd !== -1 && possibleEnd > possibleStart) {
         return text.substring(possibleStart, possibleEnd + 30);
       }
     }
     
     // Check for forwarded content
     if (text.includes('Forwarded message') && text.includes('BEGIN PGP')) {
+      console.log("Found forwarded message with PGP content");
       // Try to locate PGP block in forwarded message
       const forwardedStart = text.indexOf('Forwarded message');
       const pgpStartInForwarded = text.indexOf('-----BEGIN PGP', forwardedStart);
       const pgpEndInForwarded = text.indexOf('-----END PGP', pgpStartInForwarded);
       
-      if (pgpStartInForwarded !== -1 && pgpEndInForwarded !== -1) {
+      if (pgpStartInForwarded !== -1 && pgpEndInForwarded !== -1 && pgpEndInForwarded > pgpStartInForwarded) {
         return text.substring(pgpStartInForwarded, pgpEndInForwarded + 30);
       }
     }
@@ -164,9 +191,20 @@ const MailDetail = ({ email }: MailDetailProps) => {
     const pgpBlockRegex = /-----BEGIN PGP .*?-----[\s\S]*?-----END PGP .*?-----/g;
     const matches = text.match(pgpBlockRegex);
     if (matches && matches.length > 0) {
+      console.log("Found PGP block using regex", matches[0].substring(0, 50) + "...");
       return matches[0];
     }
     
+    // Last resort: Look for base64 encoded content which might be the encrypted payload
+    const base64Regex = /[A-Za-z0-9+/]{50,}={0,2}/;
+    const base64Match = text.match(base64Regex);
+    if (base64Match && base64Match[0].length > 100) {
+      console.log("Found potential base64 encoded content, attempting to use as PGP message");
+      // Try to reconstruct a PGP message around the base64 content
+      return `-----BEGIN PGP MESSAGE-----\n\n${base64Match[0]}\n-----END PGP MESSAGE-----`;
+    }
+    
+    console.log("No PGP content found in text");
     return null;
   };
 
@@ -177,13 +215,15 @@ const MailDetail = ({ email }: MailDetailProps) => {
       return;
     }
 
-    if (!email.text) {
+    // Check all possible content fields before giving up
+    const emailContent = email.text || email.body || email.html;
+    if (!emailContent) {
       setDecryptionError('No encrypted content available');
       return;
     }
 
     // Extract PGP message with our robust extraction function
-    const pgpMessage = extractPGPMessage(email.text);
+    const pgpMessage = extractPGPMessage(emailContent);
     
     if (!pgpMessage) {
       setDecryptionError('No valid PGP message found in content');
