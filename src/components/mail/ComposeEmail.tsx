@@ -123,6 +123,53 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
             setYubiKeyInfo(result.yubikey);
             setUseYubiKey(isDetected && hasKeys);
             
+            // If YubiKey is detected with keys, perform additional checks
+            if (isDetected && hasKeys) {
+              console.log('YubiKey detected with keys, performing additional checks');
+              
+              // 1. Check if the YubiKey has a URL set
+              const hasUrlResult = await window.electron.yubikey.hasPublicKeyURL();
+              
+              if (!hasUrlResult.success || !hasUrlResult.hasUrl) {
+                console.log('YubiKey does not have a public key URL set');
+                setError('Your YubiKey does not have a public key URL set. This may cause issues with signature verification.');
+              } else {
+                console.log('YubiKey has a public key URL set');
+                
+                // 2. If URL is set, try to import the key from it if the signature key is not in GPG keyring
+                if (result.yubikey.pgpInfo?.signatureKey?.fingerprint) {
+                  try {
+                    // First check if signature key is in GPG keyring
+                    console.log('Checking if YubiKey public key exists in GPG keyring');
+                    const publicKeyResult = await window.electron.yubikey.checkPublicKey(
+                      result.yubikey.pgpInfo.signatureKey.fingerprint
+                    );
+                    console.log('Public key check result:', publicKeyResult);
+                    
+                    if (!publicKeyResult.found) {
+                      console.log('YubiKey public key not found in GPG keyring, attempting auto-import from URL');
+                      
+                      // Try to import from card URL
+                      const importResult = await window.electron.yubikey.importPublicKeyFromCardURL();
+                      
+                      if (importResult.success) {
+                        console.log('Successfully imported public key from URL');
+                        setSuccessMessage('Successfully imported YubiKey public key from URL');
+                      } else {
+                        console.log('Failed to import public key from URL, showing helper');
+                        setPublicKeyMissing(true);
+                        setShowYubiKeyHelper(true);
+                      }
+                    }
+                  } catch (pkError) {
+                    console.error('Error checking or importing YubiKey public key:', pkError);
+                    setPublicKeyMissing(true);
+                    setShowYubiKeyHelper(true);
+                  }
+                }
+              }
+            }
+            
             // Update previous state for next comparison
             previousDetectionState = {
               detected: isDetected,
@@ -464,76 +511,88 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
   
   // Send with PIN
   const handleSendWithPin = async (pin: string) => {
-    setIsLoading(true);
-    setError(null);
-    
     try {
+      setIsLoading(true);
+      setError(null);
+      
+      console.log('[DEBUG] handleSendWithPin called with PIN');
       let finalMessage = message;
       
       // PGP operations using the provided PIN
       if (encryptWithPGP) {
         if (recipientKeys.length > 0) {
           // Encrypt with PIN
-          const encryptResult = await handleEncryptWithPin(message, pin);
-          if (encryptResult.success) {
-            finalMessage = encryptResult.encryptedMessage;
-          } else {
-            console.log('[DEBUG] Encrypt failed with error:', encryptResult.error);
-            
-            // Check for missing YubiKey public key
-            if (encryptResult.error && (
-              encryptResult.error.includes('YubiKey public key is not in your GPG keyring') ||
-              encryptResult.error.includes('Failed to import YubiKey signature key') ||
-              encryptResult.error.includes('No public key') ||
-              encryptResult.error.includes('GPG cannot access YubiKey keys')
-            )) {
-              console.log('[DEBUG] Detected missing YubiKey public key in PIN flow');
-              setPublicKeyMissing(true);
-              setShowYubiKeyHelper(true);
-              setError('Your YubiKey public key is not in your GPG keyring. Please import it first.');
-              return;
+          console.log('[DEBUG] Encrypting with PIN');
+          try {
+            const encryptResult = await handleEncryptWithPin(message, pin);
+            if (encryptResult.success) {
+              finalMessage = encryptResult.encryptedMessage;
+            } else {
+              console.log('[DEBUG] Encrypt failed with error:', encryptResult.error);
+              
+              // Check for missing YubiKey public key
+              if (encryptResult.error && (
+                encryptResult.error.includes('YubiKey public key is not in your GPG keyring') ||
+                encryptResult.error.includes('Failed to import YubiKey signature key') ||
+                encryptResult.error.includes('No public key') ||
+                encryptResult.error.includes('GPG cannot access YubiKey keys')
+              )) {
+                console.log('[DEBUG] Detected missing YubiKey public key in PIN flow');
+                setPublicKeyMissing(true);
+                setShowYubiKeyHelper(true);
+                setError('Your YubiKey public key is not in your GPG keyring. Please import it first.');
+                return;
+              }
+              
+              // Check if PIN was incorrect
+              if (encryptResult.error?.includes('PIN') || 
+                  encryptResult.error?.includes('pin') || 
+                  encryptResult.error?.includes('incorrect')) {
+                throw new Error(encryptResult.error || 'Incorrect PIN. Please try again.');
+              }
             }
-            
-            // Check if PIN was incorrect
-            if (encryptResult.error?.includes('PIN') || 
-                encryptResult.error?.includes('pin') || 
-                encryptResult.error?.includes('incorrect')) {
-              throw new Error(encryptResult.error || 'Incorrect PIN. Please try again.');
-            }
+          } catch (encryptErr) {
+            console.error('[DEBUG] Error during encryption with PIN:', encryptErr);
+            throw encryptErr; // re-throw to be handled in outer catch
           }
         } else {
           // Sign with PIN
           console.log('[DEBUG] Attempting to sign with PIN');
-          const signResult = await handleSignWithPin(message, pin);
-          console.log('[DEBUG] Sign result:', JSON.stringify({
-            success: signResult.success,
-            hasSignedMessage: !!signResult.signedMessage,
-            error: signResult.error
-          }));
-          
-          if (signResult.success) {
-            finalMessage = signResult.signedMessage;
-          } else {
-            // Check for missing YubiKey public key
-            if (signResult.error && (
-              signResult.error.includes('YubiKey public key is not in your GPG keyring') ||
-              signResult.error.includes('Failed to import YubiKey signature key') ||
-              signResult.error.includes('No public key') ||
-              signResult.error.includes('GPG cannot access YubiKey keys')
-            )) {
-              console.log('[DEBUG] Detected missing YubiKey public key in PIN flow');
-              setPublicKeyMissing(true);
-              setShowYubiKeyHelper(true);
-              setError('Your YubiKey public key is not in your GPG keyring. Please import it first.');
-              return;
-            }
+          try {
+            const signResult = await handleSignWithPin(message, pin);
+            console.log('[DEBUG] Sign result:', JSON.stringify({
+              success: signResult.success,
+              hasSignedMessage: !!signResult.signedMessage,
+              error: signResult.error
+            }));
             
-            // Check if PIN was incorrect
-            if (signResult.error?.includes('PIN') || 
-                signResult.error?.includes('pin') || 
-                signResult.error?.includes('incorrect')) {
-              throw new Error(signResult.error || 'Incorrect PIN. Please try again.');
+            if (signResult.success) {
+              finalMessage = signResult.signedMessage;
+            } else {
+              // Check for missing YubiKey public key
+              if (signResult.error && (
+                signResult.error.includes('YubiKey public key is not in your GPG keyring') ||
+                signResult.error.includes('Failed to import YubiKey signature key') ||
+                signResult.error.includes('No public key') ||
+                signResult.error.includes('GPG cannot access YubiKey keys')
+              )) {
+                console.log('[DEBUG] Detected missing YubiKey public key in PIN flow');
+                setPublicKeyMissing(true);
+                setShowYubiKeyHelper(true);
+                setError('Your YubiKey public key is not in your GPG keyring. Please import it first.');
+                return;
+              }
+              
+              // Check if PIN was incorrect
+              if (signResult.error?.includes('PIN') || 
+                  signResult.error?.includes('pin') || 
+                  signResult.error?.includes('incorrect')) {
+                throw new Error(signResult.error || 'Incorrect PIN. Please try again.');
+              }
             }
+          } catch (signErr) {
+            console.error('[DEBUG] Error during signing with PIN:', signErr);
+            throw signErr; // re-throw to be handled in outer catch
           }
         }
       }
@@ -546,29 +605,46 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
         throw new Error('OAuth functionality not available');
       }
       
-      const result = await window.electron.oauth.sendEmail({
-        to: recipient,
-        subject: subject,
-        body: finalMessage
-      });
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to send email');
+      try {
+        console.log('[DEBUG] Sending email with finalMessage length:', finalMessage.length);
+        const result = await window.electron.oauth.sendEmail({
+          to: recipient,
+          subject: subject,
+          body: finalMessage
+        });
+        
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to send email');
+        }
+        
+        // Success!
+        setSuccessMessage('Email sent successfully!');
+        setProcessingStatus('idle');
+        
+        // Use a small delay to ensure UI updates before potentially closing
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        setTimeout(() => {
+          if (onCancel) {
+            console.log('[DEBUG] Calling onCancel after successful send');
+            onCancel();
+          }
+        }, 1500);
+      } catch (sendErr) {
+        console.error('[DEBUG] Error sending email:', sendErr);
+        throw sendErr; // re-throw to be handled in outer catch
       }
-      
-      // Success!
-      setSuccessMessage('Email sent successfully!');
-      setProcessingStatus('idle');
-      setTimeout(() => onCancel?.(), 1500);
     } catch (err) {
+      // Log error details for debugging
+      console.error('[DEBUG] Error in handleSendWithPin:', err);
+      
       const errorMsg = err instanceof Error ? err.message : 'An unknown error occurred';
       setError(errorMsg);
       setProcessingStatus('idle');
       
       // If the error indicates an incorrect PIN, propagate it to caller
       if (errorMsg.includes('PIN') || errorMsg.includes('pin') || errorMsg.includes('incorrect')) {
-        setIsLoading(false);
-        throw err; // Propagate error to caller
+        throw err; // Propagate error to caller for PIN retry
       }
     } finally {
       setIsLoading(false);
@@ -584,17 +660,31 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
     // Check for YubiKey with missing public key - direct approach
     if (yubiKeyInfo?.pgpInfo?.signatureKey?.fingerprint && encryptWithPGP && useYubiKey) {
       try {
+        // Normalize fingerprint - ensure no trailing C that sometimes appears in logs
+        let fingerprint = yubiKeyInfo.pgpInfo.signatureKey.fingerprint;
+        if (fingerprint.endsWith('C') && fingerprint.length > 40) {
+          // Remove extra C if fingerprint is too long
+          fingerprint = fingerprint.slice(0, -1);
+          console.log('Normalized fingerprint:', fingerprint);
+        }
+        
         // Check if the public key exists in GPG keyring
         console.log('Checking if YubiKey public key exists in GPG keyring');
-        const result = await window.electron.yubikey.checkPublicKey(yubiKeyInfo.pgpInfo.signatureKey.fingerprint);
-        console.log('Public key check result:', result);
         
-        if (!result.found) {
-          console.log('Public key not found, showing YubiKeyHelper');
-          setPublicKeyMissing(true);
-          setShowYubiKeyHelper(true);
-          setError('Your YubiKey public key is not in your GPG keyring. Please import it first.');
-          return;
+        try {
+          const result = await window.electron.yubikey.checkPublicKey(fingerprint);
+          console.log('Public key check result:', result);
+          
+          if (!result.found) {
+            console.log('Public key not found, showing YubiKeyHelper');
+            setPublicKeyMissing(true);
+            setShowYubiKeyHelper(true);
+            setError('Your YubiKey public key is not in your GPG keyring. Please import it first.');
+            return;
+          }
+        } catch (checkError) {
+          console.warn('Error checking public key, will attempt anyway:', checkError);
+          // Don't block sending just because the check failed
         }
       } catch (error) {
         console.error('Error checking public key:', error);
@@ -794,27 +884,54 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
         
         setSuccessMessage('Sending email...');
         
-        const result = await window.electron.oauth.sendEmail({
-          to: recipient,
-          subject: subject,
-          body: finalMessage
-        });
+        console.log('[DEBUG] Sending email with OAuth, message length:', finalMessage.length);
         
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to send email');
+        // First wrap in a try-catch to handle OAuth-specific errors better
+        try {
+          const result = await window.electron.oauth.sendEmail({
+            to: recipient,
+            subject: subject,
+            body: finalMessage
+          });
+          
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to send email');
+          }
+          
+          console.log('[DEBUG] Email sent successfully:', { 
+            recipient, 
+            subject, 
+            isEncrypted: encryptWithPGP && recipientKeys.length > 0,
+            usingYubiKey: useYubiKey && yubiKeyDetected
+          });
+          
+          // Update UI state first
+          setSuccessMessage('Email sent successfully!');
+          setProcessingStatus('idle');
+          
+          // Small delay to ensure UI updates before potentially closing
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // Scheduled delayed close
+          if (onCancel) {
+            setTimeout(() => {
+              try {
+                console.log('[DEBUG] Calling onCancel after successful send');
+                onCancel();
+              } catch (cancelErr) {
+                console.error('[DEBUG] Error in onCancel handler:', cancelErr);
+                // Don't rethrow - this is just to prevent it from crashing
+              }
+            }, 1500);
+          }
+        } catch (oauthErr) {
+          console.error('[DEBUG] OAuth error sending email:', oauthErr);
+          setProcessingStatus('idle');
+          throw new Error(`OAuth error: ${oauthErr instanceof Error ? oauthErr.message : 'Unknown OAuth error'}`);
         }
-        
-        console.log('Email sent successfully:', { 
-          recipient, 
-          subject, 
-          isEncrypted: encryptWithPGP && recipientKeys.length > 0,
-          usingYubiKey: useYubiKey && yubiKeyDetected
-        });
-        
-        // Success, close the compose window after a brief delay to show success message
-        setSuccessMessage('Email sent successfully!');
-        setTimeout(() => onCancel?.(), 1500);
       } catch (sendErr) {
+        console.error('[DEBUG] Send email error (wrapped):', sendErr);
+        setProcessingStatus('idle');
         throw new Error(`Failed to send email: ${sendErr instanceof Error ? sendErr.message : 'Unknown error'}`);
       }
     } catch (err) {
@@ -838,16 +955,53 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
     }
   };
 
+  // Safe wrapper for closing YubiKey helper dialog
+  const handleCloseYubiKeyHelper = () => {
+    try {
+      console.log('[DEBUG] Closing YubiKey helper dialog');
+      setShowYubiKeyHelper(false);
+      setPublicKeyMissing(false);
+    } catch (err) {
+      console.error('[DEBUG] Error closing YubiKey helper:', err);
+      // Just hide it if there's an error
+      setShowYubiKeyHelper(false);
+    }
+  };
+  
+  // Safe wrapper for handling PIN submission
+  const handleSafePinSubmit = async (pin: string) => {
+    try {
+      setShowPinDialog(false);
+      await handlePinSubmit(pin);
+    } catch (err) {
+      console.error('[DEBUG] Error in PIN submission handler:', err);
+      
+      // Re-show PIN dialog with error if needed
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      if (errorMsg.includes('PIN') || errorMsg.includes('pin') || errorMsg.includes('incorrect')) {
+        // Delay slightly to ensure state changes properly
+        setTimeout(() => {
+          setPinDialogError(errorMsg);
+          setShowPinDialog(true);
+        }, 200);
+      }
+    }
+  };
+  
   return (
     <div className="h-full w-full flex flex-col bg-[#030b1a] p-4 md:p-6 overflow-y-auto">
       {/* YubiKey PIN Dialog */}
       <PinEntryDialog 
         isOpen={showPinDialog}
         onClose={() => {
-          setShowPinDialog(false);
-          setPinDialogError(undefined);
+          try {
+            setShowPinDialog(false);
+            setPinDialogError(undefined);
+          } catch (err) {
+            console.error('[DEBUG] Error closing PIN dialog:', err);
+          }
         }}
-        onSubmit={handlePinSubmit}
+        onSubmit={handleSafePinSubmit}
         title="YubiKey PIN Required"
         message="Please enter your YubiKey PIN to continue with signing/encryption"
         errorMessage={pinDialogError}
@@ -857,8 +1011,8 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
       {showYubiKeyHelper && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <YubiKeyHelper 
-            yubiKeyFingerprint={yubiKeyInfo?.pgpInfo?.signatureKey?.fingerprint || "A2F132636419B41CE512D0CB6AF6604396640DCE"}
-            onClose={() => setShowYubiKeyHelper(false)}
+            yubiKeyFingerprint={yubiKeyInfo?.pgpInfo?.signatureKey?.fingerprint}
+            onClose={handleCloseYubiKeyHelper}
           />
         </div>
       )}
