@@ -192,12 +192,34 @@ export class PGPService {
         }
       };
       
-      // If public key attachment is requested, we need to modify the encrypt options
-      if (attachPublicKey && senderPublicKey) {
-        console.log('[PGPService] Including sender\'s public key in encrypted message');
-        // The correct way to attach the sender's public key is to include it in the key material
-        // that gets bundled with the message, which is automatically done when we include
-        // the sender in the recipients list above
+      // Properly handle public key attachment
+      if (attachPublicKey && keyPair && keyPair.publicKey) {
+        console.log('[PGPService] Adding public key to encryption options');
+        
+        // OpenPGP.js doesn't have a direct way to attach public keys to messages,
+        // so we need to create a multipart message with the public key as an attachment
+        
+        // Create a multipart message with the original message and the public key
+        // This is the standard way PGP clients like GPG, Thunderbird, etc. handle key attachment
+        const boundary = `----PGPPublicKeyAttachment_${Date.now().toString(16)}`;
+        const multipartMessage = `Content-Type: multipart/mixed; boundary="${boundary}"
+
+--${boundary}
+Content-Type: text/plain; charset=utf-8
+
+${message}
+
+--${boundary}
+Content-Type: application/pgp-keys
+Content-Description: OpenPGP Public Key
+Content-Disposition: attachment; filename="publickey.asc"
+
+${keyPair.publicKey}
+--${boundary}--`;
+
+        // Use the multipart message as the input for encryption
+        encryptOptions.message = await openpgp.createMessage({ text: multipartMessage });
+        console.log('[PGPService] Created multipart message with public key attachment');
       }
       
       // Add signing if enabled and we have a default key
@@ -224,14 +246,13 @@ export class PGPService {
       // Encrypt the message
       const encrypted = await openpgp.encrypt(encryptOptions);
 
-      // If we should attach our public key, use openpgp.js built-in key attachment
+      // If we attached our public key, log that it was done
       if (attachPublicKey) {
-        // The public key should be attached through the encryption options
-        // We've already set up sender's key in the encryption options earlier
-        console.log('[PGPService] Message encrypted with public key attachment');
+        console.log('[PGPService] Message encrypted with public key attachment as MIME multipart');
         
-        // Add a comment to the encrypted message about the key being attached
-        return encrypted + '\n\n--\nThis message was sent with Secure Mail Client. The sender\'s public key is included in the PGP message.';
+        // Return the encrypted message without any additional footer
+        // The public key is already properly attached in the MIME structure
+        return encrypted;
       }
 
       return encrypted as string;
