@@ -249,12 +249,9 @@ ${keyPair.publicKey}
       // If we attached our public key, log that it was done
       if (attachPublicKey) {
         console.log('[PGPService] Message encrypted with public key attachment as MIME multipart');
-        
-        // Return the encrypted message without any additional footer
-        // The public key is already properly attached in the MIME structure
-        return encrypted;
       }
 
+      // Cast the encrypted result to string - OpenPGP.js returns either a string or a stream
       return encrypted as string;
     } catch (error) {
       console.error('[PGPService] Error encrypting message:', error);
