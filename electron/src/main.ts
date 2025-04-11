@@ -1,11 +1,13 @@
 // electron/src/main.ts
 import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 import { ImapService } from './services/ImapService';
 import { PGPService } from './services/PGPService';
 import { CredentialService } from './services/CredentialService';
 import { OAuthService } from './services/OAuthService';
 import { YubiKeyService } from './services/YubiKeyService';
+import { YubiKeyManager } from './services/YubiKeyManager';
 // For loading .env files
 import * as dotenv from 'dotenv';
 dotenv.config();
@@ -22,6 +24,7 @@ let pgpService: PGPService | null = null;
 let credentialService: CredentialService | null = null;
 let oauthService: OAuthService | null = null;
 let yubiKeyService: YubiKeyService | null = null;
+let yubiKeyManager: YubiKeyManager | null = null;
 
 function createWindow() {
   // Use absolute path for icon
@@ -65,6 +68,7 @@ function createWindow() {
   imapService = new ImapService(mainWindow);
   pgpService = new PGPService();
   yubiKeyService = new YubiKeyService();
+  yubiKeyManager = new YubiKeyManager(yubiKeyService);
   
   // Check and integrate YubiKey PGP keys if available
   setTimeout(async () => {
@@ -504,12 +508,36 @@ ipcMain.handle('yubikey:export-public-keys', async () => {
   }
 });
 
+// Import YubiKey keys to GPG directly
+ipcMain.handle('yubikey:import-to-gpg', async () => {
+  try {
+    if (!yubiKeyService) {
+      throw new Error('YubiKey service not initialized');
+    }
+    
+    // Use the new forceImportToGPG method to directly handle GPG integration
+    const result = await yubiKeyService.forceImportToGPG();
+    return result;
+  } catch (error) {
+    console.error('Error importing YubiKey keys to GPG:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    };
+  }
+});
+
 // Import YubiKey keys to PGP store
 ipcMain.handle('yubikey:import-to-pgp', async () => {
   try {
     if (!yubiKeyService || !pgpService) {
       throw new Error('Required services not initialized');
     }
+    
+    // First try to import to GPG
+    await yubiKeyService.forceImportToGPG().catch(err => {
+      console.warn('Failed to force import YubiKey keys to GPG:', err);
+    });
     
     // Export keys from YubiKey
     const exportResult = await yubiKeyService.exportPublicKeys();
@@ -607,6 +635,163 @@ ipcMain.handle('yubikey:import-to-pgp', async () => {
   } catch (error) {
     console.error('Error importing YubiKey keys to PGP store:', error);
     return { success: false, error: error.message };
+  }
+});
+
+// YubiKey Manager IPC handlers
+ipcMain.handle('yubikey:check-public-key', async (_, fingerprint) => {
+  try {
+    if (!yubiKeyManager) {
+      throw new Error('YubiKey Manager not initialized');
+    }
+    
+    const result = await yubiKeyManager.checkPublicKey(fingerprint);
+    return result;
+  } catch (error) {
+    console.error('Error checking public key:', error);
+    return { found: false, message: error.message };
+  }
+});
+
+ipcMain.handle('yubikey:import-from-keyserver', async (_, fingerprint) => {
+  try {
+    if (!yubiKeyManager) {
+      throw new Error('YubiKey Manager not initialized');
+    }
+    
+    const result = await yubiKeyManager.importPublicKeyFromKeyserver(fingerprint);
+    return result;
+  } catch (error) {
+    console.error('Error importing from keyserver:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('yubikey:import-from-file', async () => {
+  try {
+    if (!yubiKeyManager) {
+      throw new Error('YubiKey Manager not initialized');
+    }
+    
+    const result = await yubiKeyManager.importPublicKeyFromFile();
+    return result;
+  } catch (error) {
+    console.error('Error importing from file:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('yubikey:export-to-file', async (_, fingerprint) => {
+  try {
+    if (!yubiKeyManager) {
+      throw new Error('YubiKey Manager not initialized');
+    }
+    
+    const result = await yubiKeyManager.exportPublicKeyToFile(fingerprint);
+    return result;
+  } catch (error) {
+    console.error('Error exporting to file:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('yubikey:upload-to-keyserver', async (_, fingerprint) => {
+  try {
+    if (!yubiKeyManager) {
+      throw new Error('YubiKey Manager not initialized');
+    }
+    
+    const result = await yubiKeyManager.uploadPublicKeyToKeyserver(fingerprint);
+    return result;
+  } catch (error) {
+    console.error('Error uploading to keyserver:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Check if YubiKey has a public key URL set
+ipcMain.handle('yubikey:has-public-key-url', async () => {
+  try {
+    if (!yubiKeyService) {
+      throw new Error('YubiKey service not initialized');
+    }
+    
+    const hasUrl = await yubiKeyService.hasPublicKeyURL();
+    return { 
+      success: true, 
+      hasUrl 
+    };
+  } catch (error) {
+    console.error('Error checking for YubiKey public key URL:', error);
+    return { 
+      success: false, 
+      hasUrl: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+});
+
+// Get the YubiKey's public key URL
+ipcMain.handle('yubikey:get-public-key-url', async () => {
+  try {
+    if (!yubiKeyService) {
+      throw new Error('YubiKey service not initialized');
+    }
+    
+    const url = await yubiKeyService.getPublicKeyURL();
+    return { 
+      success: true, 
+      url 
+    };
+  } catch (error) {
+    console.error('Error getting YubiKey public key URL:', error);
+    return { 
+      success: false, 
+      url: undefined,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+});
+
+// Import public key from the URL set on the YubiKey
+ipcMain.handle('yubikey:import-from-card-url', async () => {
+  try {
+    if (!yubiKeyService) {
+      throw new Error('YubiKey service not initialized');
+    }
+    
+    const result = await yubiKeyService.importPublicKeyFromCardURL();
+    return result;
+  } catch (error) {
+    console.error('Error importing public key from card URL:', error);
+    return { 
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+});
+
+ipcMain.handle('yubikey:test-functions', async () => {
+  try {
+    if (!yubiKeyManager) {
+      throw new Error('YubiKey Manager not initialized');
+    }
+    
+    const result = await yubiKeyManager.testYubiKeyFunctions();
+    return result;
+  } catch (error) {
+    console.error('Error testing YubiKey functions:', error);
+    return { 
+      success: false, 
+      results: {
+        keyDetected: false,
+        publicKeyFound: false,
+        canSign: false,
+        canEncrypt: false,
+        canDecrypt: false
+      },
+      error: error.message 
+    };
   }
 });
 
@@ -742,7 +927,7 @@ ipcMain.handle('oauth:fetch-emails', async () => {
   }
 });
 
-ipcMain.handle('oauth:send-email', async (_, { to, subject, body }) => {
+ipcMain.handle('oauth:send-email', async (_, params) => {
   if (!oauthService) {
     console.warn('OAuth service not initialized, oauth:send-email called');
     return { 
@@ -752,7 +937,50 @@ ipcMain.handle('oauth:send-email', async (_, { to, subject, body }) => {
   }
   
   try {
-    const sendResult = await oauthService.sendEmail(to, subject, body);
+    // Check if the email body is PGP encrypted
+    let emailParams = params;
+    const body = typeof params === 'object' ? params.body : params.toString();
+    const isPGPMessage = body.includes('-----BEGIN PGP MESSAGE-----');
+    const isPGPSignedMessage = body.includes('-----BEGIN PGP SIGNED MESSAGE-----');
+    
+    // If this is a PGP message, we need to add the public key as attachment
+    if ((isPGPMessage || isPGPSignedMessage) && pgpService) {
+      console.log('[main] Detected PGP content, adding public key as attachment');
+      
+      try {
+        // Get default key for attachment
+        const keys = pgpService.getPublicKeys();
+        const defaultKey = keys.find(key => key.isDefault);
+        
+        if (defaultKey) {
+          // Get the public key content
+          const publicKeyPath = path.join(app.getPath('userData'), 'pgp-keys', `${defaultKey.fingerprint}.public`);
+          if (fs.existsSync(publicKeyPath)) {
+            const publicKeyContent = fs.readFileSync(publicKeyPath, 'utf8');
+            
+            // Create proper email parameters
+            emailParams = {
+              to: typeof params === 'object' ? params.to : '',
+              subject: typeof params === 'object' ? params.subject : '',
+              body: body,
+              attachments: [{
+                filename: 'publickey.asc',
+                contentType: 'application/pgp-keys',
+                content: publicKeyContent
+              }]
+            };
+            
+            console.log('[main] Adding public key attachment to email');
+          }
+        }
+      } catch (keyError) {
+        console.error('[main] Error adding public key attachment:', keyError);
+        // Continue without attachment
+      }
+    }
+    
+    // Send email with potential attachments
+    const sendResult = await oauthService.sendEmail(emailParams);
     return sendResult;
   } catch (error) {
     console.error('Error sending email with OAuth:', error);

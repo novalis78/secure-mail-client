@@ -270,10 +270,43 @@ export class OAuthService {
   /**
    * Send an email using Gmail API
    */
-  public async sendEmail(to: string, subject: string, body: string): Promise<{ success: boolean; error?: string }> {
+  public async sendEmail(params: { 
+    to: string, 
+    subject: string, 
+    body: string,
+    attachments?: Array<{
+      filename: string;
+      contentType: string;
+      content: string;
+    }>
+  } | string, subject?: string, body?: string): Promise<{ success: boolean; error?: string }> {
     try {
       if (!this.isAuthenticated) {
         throw new Error('Not authenticated. Please authenticate first.');
+      }
+      
+      // Handle both overloaded versions
+      let to: string;
+      let emailSubject: string;
+      let emailBody: string;
+      let attachments: Array<{
+        filename: string;
+        contentType: string;
+        content: string;
+      }> = [];
+      
+      // Check which version was called
+      if (typeof params === 'string') {
+        // Legacy version with individual parameters
+        to = params;
+        emailSubject = subject || '';
+        emailBody = body || '';
+      } else {
+        // New version with object parameter
+        to = params.to;
+        emailSubject = params.subject;
+        emailBody = params.body;
+        attachments = params.attachments || [];
       }
       
       // Refresh token if needed
@@ -282,21 +315,68 @@ export class OAuthService {
       // Initialize Gmail API
       const gmail = google.gmail({ version: 'v1', auth: this.oauth2Client });
       
-      // Create email (RFC 5322 format)
-      const emailLines = [
+      // Generate a boundary for multipart messages
+      const boundary = `----EmailBoundary_${Date.now().toString(16)}`;
+      
+      // Create email headers
+      const headers = [
         `To: ${to}`,
-        `Subject: ${subject}`,
-        'Content-Type: text/plain; charset=utf-8',
-        'MIME-Version: 1.0',
-        '',
-        body
+        `Subject: ${emailSubject}`,
+        'MIME-Version: 1.0'
       ];
       
-      // Join with proper line endings
-      const email = emailLines.join('\r\n');
+      // Check if we have attachments
+      if (attachments.length > 0) {
+        headers.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
+      } else {
+        headers.push('Content-Type: text/plain; charset=utf-8');
+      }
+      
+      // Create email content
+      let emailContent = headers.join('\r\n') + '\r\n\r\n';
+      
+      // Add body and attachments if any
+      if (attachments.length > 0) {
+        // Start with the text part
+        emailContent += `--${boundary}\r\n`;
+        emailContent += 'Content-Type: text/plain; charset=utf-8\r\n\r\n';
+        emailContent += emailBody + '\r\n\r\n';
+        
+        // Add each attachment
+        for (const attachment of attachments) {
+          emailContent += `--${boundary}\r\n`;
+          emailContent += `Content-Type: ${attachment.contentType}\r\n`;
+          emailContent += `Content-Disposition: attachment; filename="${attachment.filename}"\r\n\r\n`;
+          emailContent += attachment.content + '\r\n\r\n';
+        }
+        
+        // Close the boundary
+        emailContent += `--${boundary}--\r\n`;
+      } else {
+        // Simple email with just text body
+        emailContent += emailBody;
+      }
+      
+      // Detect if this is a PGP message and adjust content type if needed
+      const isPGPMessage = emailBody.includes('-----BEGIN PGP MESSAGE-----');
+      const isPGPSignedMessage = emailBody.includes('-----BEGIN PGP SIGNED MESSAGE-----');
+      
+      if (isPGPMessage || isPGPSignedMessage) {
+        console.log('[OAuthService] Detected PGP content, adjusting email format');
+      }
+      
+      // Log email structure for debugging
+      console.log('[OAuthService] Email structure:', {
+        to,
+        subject: emailSubject,
+        hasAttachments: attachments.length > 0,
+        attachmentCount: attachments.length,
+        isPGPMessage,
+        isPGPSignedMessage
+      });
       
       // Encode to base64
-      const encodedEmail = Buffer.from(email).toString('base64')
+      const encodedEmail = Buffer.from(emailContent).toString('base64')
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
         .replace(/=+$/, '');
