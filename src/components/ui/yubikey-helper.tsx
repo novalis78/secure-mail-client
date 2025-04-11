@@ -26,22 +26,15 @@ export function YubiKeyHelper({ yubiKeyFingerprint, onClose }: YubiKeyHelperProp
       console.log('[YubiKeyHelper] Checking public key for fingerprint:', yubiKeyFingerprint);
       
       try {
-        // Always return that the key is not found for testing
-        // Force not found for testing purposes
-        console.log('[YubiKeyHelper] FORCING publicKeyFound = false for testing');
-        setPublicKeyFound(false);
-        setErrorMessage('Your YubiKey public key is not in your GPG keyring. You need to import it to use your YubiKey for signing and encryption.');
-        
-        // Commented out actual implementation for testing
-        /*
         // Check if the public key exists in GPG keyring
+        console.log('[YubiKeyHelper] Checking if public key exists for:', yubiKeyFingerprint);
         const result = await window.electron.yubikey.checkPublicKey(yubiKeyFingerprint);
+        console.log('[YubiKeyHelper] Check result:', result);
         setPublicKeyFound(result.found);
         
         if (!result.found) {
           setErrorMessage('Your YubiKey public key is not in your GPG keyring. You need to import it to use your YubiKey for signing and encryption.');
         }
-        */
       } catch (error) {
         console.error('Error checking public key:', error);
         setErrorMessage('Failed to check for public key');

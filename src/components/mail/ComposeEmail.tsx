@@ -576,17 +576,29 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
   };
   
   const handleSend = async () => {
-    // Direct approach to show YubiKeyHelper first - we'll add error handling after testing
-    if (yubiKeyInfo?.pgpInfo?.signatureKey?.fingerprint) {
-      console.log('Forcing YubiKeyHelper to appear for testing');
-      setPublicKeyMissing(true);
-      setShowYubiKeyHelper(true);
-      return;
-    }
-
     if (!recipient || !subject) {
       setError('Recipient and subject are required');
       return;
+    }
+    
+    // Check for YubiKey with missing public key - direct approach
+    if (yubiKeyInfo?.pgpInfo?.signatureKey?.fingerprint && encryptWithPGP && useYubiKey) {
+      try {
+        // Check if the public key exists in GPG keyring
+        console.log('Checking if YubiKey public key exists in GPG keyring');
+        const result = await window.electron.yubikey.checkPublicKey(yubiKeyInfo.pgpInfo.signatureKey.fingerprint);
+        console.log('Public key check result:', result);
+        
+        if (!result.found) {
+          console.log('Public key not found, showing YubiKeyHelper');
+          setPublicKeyMissing(true);
+          setShowYubiKeyHelper(true);
+          setError('Your YubiKey public key is not in your GPG keyring. Please import it first.');
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking public key:', error);
+      }
     }
 
     setIsLoading(true);
@@ -826,17 +838,8 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
     }
   };
 
-  // TEMPORARY - HARDCODED YUBIKEY HELPER FOR TESTING
   return (
     <div className="h-full w-full flex flex-col bg-[#030b1a] p-4 md:p-6 overflow-y-auto">
-      {/* Force YubiKey Helper to appear for debugging */}
-      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <YubiKeyHelper 
-          yubiKeyFingerprint={yubiKeyInfo?.pgpInfo?.signatureKey?.fingerprint || "A2F132636419B41CE512D0CB6AF6604396640DCE"}
-          onClose={() => {}}
-        />
-      </div>
-      
       {/* YubiKey PIN Dialog */}
       <PinEntryDialog 
         isOpen={showPinDialog}
@@ -849,6 +852,16 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
         message="Please enter your YubiKey PIN to continue with signing/encryption"
         errorMessage={pinDialogError}
       />
+      
+      {/* YubiKey Helper Dialog - show when public key is missing */}
+      {showYubiKeyHelper && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <YubiKeyHelper 
+            yubiKeyFingerprint={yubiKeyInfo?.pgpInfo?.signatureKey?.fingerprint || "A2F132636419B41CE512D0CB6AF6604396640DCE"}
+            onClose={() => setShowYubiKeyHelper(false)}
+          />
+        </div>
+      )}
       
       {/* Email Header */}
       <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#0c1c3d]">
