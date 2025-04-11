@@ -155,6 +155,7 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
                       if (importResult.success) {
                         console.log('Successfully imported public key from URL');
                         setSuccessMessage('Successfully imported YubiKey public key from URL');
+                        setSuccessFading(false);
                       } else {
                         console.log('Failed to import public key from URL, showing helper');
                         setPublicKeyMissing(true);
@@ -285,6 +286,54 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
       searchForContact();
     }
   }, [recipient]);
+  
+  // State for tracking animation state
+  const [successFading, setSuccessFading] = useState(false);
+  const [errorFading, setErrorFading] = useState(false);
+  
+  // Auto-dismiss success notifications after timeout
+  useEffect(() => {
+    if (successMessage) {
+      // Reset fade state when new message appears
+      setSuccessFading(false);
+      
+      const fadeTimer = setTimeout(() => {
+        // Start fade out animation
+        setSuccessFading(true);
+      }, 9700); // Start fade slightly before removal
+      
+      const removeTimer = setTimeout(() => {
+        setSuccessMessage(null);
+      }, 10000); // Remove after 10 seconds
+      
+      return () => {
+        clearTimeout(fadeTimer);
+        clearTimeout(removeTimer);
+      };
+    }
+  }, [successMessage]);
+  
+  // Auto-dismiss error notifications after timeout
+  useEffect(() => {
+    if (error) {
+      // Reset fade state when new error appears
+      setErrorFading(false);
+      
+      const fadeTimer = setTimeout(() => {
+        // Start fade out animation
+        setErrorFading(true);
+      }, 9700); // Start fade slightly before removal
+      
+      const removeTimer = setTimeout(() => {
+        setError(null);
+      }, 10000); // Remove after 10 seconds
+      
+      return () => {
+        clearTimeout(fadeTimer);
+        clearTimeout(removeTimer);
+      };
+    }
+  }, [error]);
 
   // Handle clicking outside of the dropdown
   useEffect(() => {
@@ -331,8 +380,12 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
   const handleCopyFingerprint = (fingerprint: string) => {
     navigator.clipboard.writeText(fingerprint).then(() => {
       setSuccessMessage('Fingerprint copied to clipboard');
+      setSuccessFading(false);
       // Clear success message after 3 seconds
-      setTimeout(() => setSuccessMessage(null), 3000);
+      setTimeout(() => {
+        setSuccessFading(true);
+        setTimeout(() => setSuccessMessage(null), 300); // Duration of fade animation
+      }, 2700);
     }).catch(err => {
       console.error('Failed to copy fingerprint:', err);
     });
@@ -654,6 +707,7 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
   const handleSend = async () => {
     if (!recipient || !subject) {
       setError('Recipient and subject are required');
+      setErrorFading(false);
       return;
     }
     
@@ -725,6 +779,7 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
                   // Success without PIN
                   finalMessage = encryptResult.encryptedMessage;
                   setSuccessMessage('Message encrypted with YubiKey');
+                  setSuccessFading(false);
                 } else if (encryptResult.error?.includes('PIN') || encryptResult.error?.includes('pin')) {
                   // PIN needed - show PIN dialog
                   setShowPinDialog(true);
@@ -795,6 +850,7 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
               if (signResult.success && signResult.signedMessage) {
                 finalMessage = signResult.signedMessage;
                 setSuccessMessage('Message signed successfully');
+                setSuccessFading(false);
               } else if (signResult.needsPin) {
                 // PIN is needed for signing
                 setShowPinDialog(true);
@@ -907,6 +963,7 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
           
           // Update UI state first
           setSuccessMessage('Email sent successfully!');
+          setSuccessFading(false);
           setProcessingStatus('idle');
           
           // Small delay to ensure UI updates before potentially closing
@@ -950,6 +1007,7 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
       }
       
       setError(errorMsg);
+      setErrorFading(false);
     } finally {
       setIsLoading(false);
     }
@@ -984,6 +1042,10 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
           setPinDialogError(errorMsg);
           setShowPinDialog(true);
         }, 200);
+      } else {
+        // For other errors, show as a regular notification
+        setError(errorMsg);
+        setErrorFading(false);
       }
     }
   };
@@ -1055,20 +1117,34 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
         </button>
       </div>
 
-      {/* Status Messages */}
-      {successMessage && (
-        <div className="bg-green-500/10 text-green-500 p-4 rounded-lg mb-4 flex items-center gap-2">
-          <Check size={16} className="shrink-0" />
-          <span>{successMessage}</span>
-        </div>
-      )}
-      
-      {error && (
-        <div className="bg-red-500/10 text-red-500 p-4 rounded-lg mb-4 flex items-center gap-2">
-          <AlertCircle size={16} className="shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
+      {/* Floating Status Messages */}
+      <div className="fixed top-4 right-4 left-4 z-50 flex flex-col gap-2 pointer-events-none">
+        {successMessage && (
+          <div className={`bg-green-500/10 text-green-500 p-4 rounded-lg flex items-center gap-2 ml-auto max-w-md border border-green-500/20 shadow-lg pointer-events-auto ${successFading ? 'animate-fade-out' : 'animate-fade-in'}`}>
+            <Check size={16} className="shrink-0" />
+            <span>{successMessage}</span>
+            <button 
+              onClick={() => setSuccessMessage(null)} 
+              className="ml-2 text-green-500/70 hover:text-green-500 transition-colors"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+        
+        {error && (
+          <div className={`bg-red-500/10 text-red-500 p-4 rounded-lg flex items-center gap-2 ml-auto max-w-md border border-red-500/20 shadow-lg pointer-events-auto ${errorFading ? 'animate-fade-out' : 'animate-fade-in'}`}>
+            <AlertCircle size={16} className="shrink-0" />
+            <span>{error}</span>
+            <button 
+              onClick={() => setError(null)} 
+              className="ml-2 text-red-500/70 hover:text-red-500 transition-colors"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Email Form */}
       <div className="flex-1 flex flex-col gap-4">

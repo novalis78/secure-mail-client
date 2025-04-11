@@ -271,6 +271,36 @@ button.bg-accent-green {
   background-color: #10b981 !important;
 }
 
+/* Custom blinking cursor for PIN input */
+@keyframes blinkCaret {
+  from, to { border-color: transparent }
+  50% { border-color: #6366f1 }
+}
+
+.cursor-blink {
+  caret-color: #6366f1;
+  animation: blinkCaret 1s step-end infinite;
+}
+
+/* Notification animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-10px); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-fade-out {
+  animation: fadeOut 0.3s ease-in forwards;
+}
+
 div.bg-secondary-dark {
   background-color: #0F172A !important;
 }
