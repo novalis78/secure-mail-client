@@ -826,8 +826,17 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
     }
   };
 
+  // TEMPORARY - HARDCODED YUBIKEY HELPER FOR TESTING
   return (
     <div className="h-full w-full flex flex-col bg-[#030b1a] p-4 md:p-6 overflow-y-auto">
+      {/* Force YubiKey Helper to appear for debugging */}
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <YubiKeyHelper 
+          yubiKeyFingerprint={yubiKeyInfo?.pgpInfo?.signatureKey?.fingerprint || "A2F132636419B41CE512D0CB6AF6604396640DCE"}
+          onClose={() => {}}
+        />
+      </div>
+      
       {/* YubiKey PIN Dialog */}
       <PinEntryDialog 
         isOpen={showPinDialog}
@@ -840,24 +849,6 @@ const ComposeEmail = ({ onCancel }: ComposeEmailProps) => {
         message="Please enter your YubiKey PIN to continue with signing/encryption"
         errorMessage={pinDialogError}
       />
-      
-      {/* YubiKey Helper Dialog - show when public key is missing */}
-      {showYubiKeyHelper && yubiKeyInfo?.pgpInfo?.signatureKey?.fingerprint && (() => {
-        console.log('[DEBUG] Rendering YubiKeyHelper component with fingerprint:', yubiKeyInfo.pgpInfo.signatureKey.fingerprint);
-        return (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <YubiKeyHelper 
-              yubiKeyFingerprint={yubiKeyInfo.pgpInfo.signatureKey.fingerprint}
-              onClose={() => setShowYubiKeyHelper(false)}
-            />
-          </div>
-        );
-      })()}
-      {showYubiKeyHelper && (() => {
-        console.log('[DEBUG] showYubiKeyHelper is true but fingerprint might be missing:', 
-          yubiKeyInfo?.pgpInfo?.signatureKey?.fingerprint || 'No fingerprint');
-        return null;
-      })()}
       
       {/* Email Header */}
       <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#0c1c3d]">
