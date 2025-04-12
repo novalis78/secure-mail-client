@@ -1625,6 +1625,20 @@ ipcMain.handle('app:close', () => {
   return { success: true };
 });
 
+// Add handler for window dragging
+ipcMain.on('electron:window-drag', () => {
+  if (mainWindow) {
+    mainWindow.webContents.send('electron:window-drag-started');
+    if (process.platform === 'linux') {
+      // Linux requires a special approach for dragging frameless windows
+      mainWindow.beginFramelessDrag();
+    } else {
+      // For other platforms, this is handled by Chromium natively
+      // when using -webkit-app-region in CSS
+    }
+  }
+});
+
 // For managing the XPUB key used for address derivation
 ipcMain.handle('premium:set-xpub', (_, { xpub }) => {
   try {

@@ -1,21 +1,27 @@
 const fs = require('fs');
 const path = require('path');
 
-// Source script
-const sourceScript = path.join(__dirname, 'yubikey-sign.sh');
+// Source scripts
+const sourceScripts = [
+  path.join(__dirname, 'yubikey-sign.sh'),
+  path.join(__dirname, 'export-yubikey-keys.sh')
+];
 
 // Copy function
-function copyScript(destDir, scriptName) {
+function copyScript(destDir, sourceScriptPath) {
   // Create scripts directory if it doesn't exist
   const scriptsDir = path.join(destDir, 'scripts');
   if (!fs.existsSync(scriptsDir)) {
     fs.mkdirSync(scriptsDir, { recursive: true });
   }
 
+  // Get script filename
+  const scriptName = path.basename(sourceScriptPath);
+  
   // Copy the script
   const destScript = path.join(scriptsDir, scriptName);
-  fs.copyFileSync(sourceScript, destScript);
-  console.log(`Copied ${sourceScript} to ${destScript}`);
+  fs.copyFileSync(sourceScriptPath, destScript);
+  console.log(`Copied ${sourceScriptPath} to ${destScript}`);
 
   // Make the script executable
   try {
@@ -31,9 +37,11 @@ const electronDir = path.join(__dirname, '..', 'dist-electron');
 const distDir = path.join(__dirname, '..', 'dist');
 const appDir = path.join(__dirname, '..');
 
-// Copy to all possible locations
-copyScript(electronDir, 'yubikey-sign.sh');
-copyScript(distDir, 'yubikey-sign.sh');
-copyScript(appDir, 'yubikey-sign.sh'); // Copy to root app directory too
+// Copy all scripts to all possible locations
+for (const sourceScript of sourceScripts) {
+  copyScript(electronDir, sourceScript);
+  copyScript(distDir, sourceScript);
+  copyScript(appDir, sourceScript); // Copy to root app directory too
+}
 
 console.log('YubiKey scripts copied successfully to all output directories!');

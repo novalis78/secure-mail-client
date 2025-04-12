@@ -2,6 +2,11 @@
   "name": "secure-mail-client",
   "private": true,
   "version": "1.0.8",
+  "description": "Secure email client with PGP and YubiKey support",
+  "author": {
+    "name": "Secure Mail Team",
+    "email": "admin@securemailclient.example.com"
+  },
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "tsc -b electron/tsconfig.json && node scripts/copy-scripts.js && concurrently \"vite\" \"electron .\"",
@@ -68,6 +73,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.2.2",
+    "tailwindcss-merge": "^2.2.2",
     "dotenv": "^16.4.7",
     "electron-store": "^8.1.0",
     "google-auth-library": "^9.15.1",
@@ -80,7 +86,6 @@
     "qrcode.react": "^4.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "tailwind-merge": "^2.6.0",
     "tiny-secp256k1": "^2.2.3"
   },
   "devDependencies": {

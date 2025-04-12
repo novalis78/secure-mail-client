@@ -1,6 +1,25 @@
 // electron/src/preload.ts
 import { contextBridge, ipcRenderer } from 'electron';
 
+// Register drag data attribute handler
+document.addEventListener('DOMContentLoaded', () => {
+  // Handle dragging regions
+  document.addEventListener('mousedown', (e) => {
+    const target = e.target as HTMLElement;
+    const dragElement = target.closest('[data-electron-drag]');
+    const noDragElement = target.closest('[data-electron-no-drag]');
+
+    // No-drag elements take precedence over drag elements
+    if (noDragElement) {
+      return;
+    }
+
+    if (dragElement) {
+      ipcRenderer.send('electron:window-drag');
+    }
+  });
+});
+
 contextBridge.exposeInMainWorld('electron', {
   ipcRenderer: {
     send: (channel: string, data: any) => {

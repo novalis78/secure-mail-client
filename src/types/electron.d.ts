@@ -410,6 +410,13 @@ interface AppAPI {
   close: () => Promise<{ success: boolean }>;
 }
 
+// Add CSS property for Electron app draggable regions
+declare namespace React {
+  interface CSSProperties {
+    WebkitAppRegion?: 'drag' | 'no-drag';
+  }
+}
+
 declare global {
   interface Window {
     electron: {

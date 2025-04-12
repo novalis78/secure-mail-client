@@ -32,13 +32,13 @@ const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false,
   return (
     <div 
       className="bg-[#030b1a] border-b border-[#0c1c3d]"
+      data-electron-drag="true"
       style={{ 
         background: 'linear-gradient(to bottom, #041024, #030b1a)',
         borderBottomWidth: '1px',
         borderBottomStyle: 'solid',
         borderBottomColor: '#0c1c3d',
-        boxShadow: 'inset 0 -1px 0 0 rgba(6, 46, 93, 0.2)',
-        WebkitAppRegion: 'drag' // Make entire header draggable
+        boxShadow: 'inset 0 -1px 0 0 rgba(6, 46, 93, 0.2)'
       }}
     >
       {/* Main Header */}
@@ -98,10 +98,10 @@ const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false,
               gap: '1.5rem'
             }}
           >
-            <div style={{ WebkitAppRegion: 'no-drag' }}>
+            <div data-electron-no-drag="true">
               <StatusIcon status={status} />
             </div>
-            <div title="Refresh Emails" style={{ WebkitAppRegion: 'no-drag' }}>
+            <div title="Refresh Emails" data-electron-no-drag="true">
               <RefreshCw 
                 size={20} 
                 className={`${isRefreshing ? 'animate-spin text-accent-green' : 'text-gray-400 hover:text-gray-300'} cursor-pointer`}
@@ -111,7 +111,7 @@ const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false,
                 }}
               />
             </div>
-            <div title="Contacts" style={{ WebkitAppRegion: 'no-drag' }}>
+            <div title="Contacts" data-electron-no-drag="true">
               <Globe 
                 size={20} 
                 className="text-gray-400 hover:text-gray-300 cursor-pointer"
@@ -122,7 +122,7 @@ const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false,
                 }}
               />
             </div>
-            <div title="Security Status" style={{ WebkitAppRegion: 'no-drag' }}>
+            <div title="Security Status" data-electron-no-drag="true">
               <ShieldCheck 
                 size={20} 
                 className="text-gray-400 hover:text-gray-300 cursor-pointer"
@@ -132,7 +132,7 @@ const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false,
                 }}
               />
             </div>
-            <div title="Settings" style={{ WebkitAppRegion: 'no-drag' }}>
+            <div title="Settings" data-electron-no-drag="true">
               <Settings 
                 size={20} 
                 className="text-gray-400 hover:text-gray-300 cursor-pointer" 
@@ -147,8 +147,8 @@ const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false,
             {onClose && (
               <div 
                 title="Close Application" 
+                data-electron-no-drag="true"
                 style={{ 
-                  WebkitAppRegion: 'no-drag',
                   marginLeft: '0.5rem'
                 }}
               >
@@ -163,7 +163,7 @@ const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false,
               </div>
             )}
             {selectedEmail && (
-              <div style={{ WebkitAppRegion: 'no-drag' }}>
+              <div data-electron-no-drag="true">
                 <HeaderActions onAction={handleAction} />
               </div>
             )}
