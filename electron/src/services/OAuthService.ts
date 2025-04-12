@@ -8,7 +8,7 @@ import { Credentials } from 'google-auth-library/build/src/auth/credentials';
 
 export class OAuthService {
   private oauth2Client: OAuth2Client;
-  private redirectUri: string = 'urn:ietf:wg:oauth:2.0:oob';
+  private redirectUri: string = 'http://localhost:3000';
   private tokenFilePath: string;
   private credentials: any;
   private isAuthenticated: boolean = false;
@@ -91,44 +91,274 @@ export class OAuthService {
   /**
    * Start the OAuth authentication process
    */
-  public async authenticate(): Promise<{ success: boolean; error?: string }> {
+public async authenticate(): Promise<{ success: boolean; error?: string }> {
+  return new Promise((resolve, reject) => {
     try {
-      // Generate the authorization URL
-      const authUrl = this.oauth2Client.generateAuthUrl({
-        access_type: 'offline',
-        scope: this.scopes,
-        prompt: 'consent'  // Force re-consent to get refresh token
-      });
-
-      // For desktop apps with OOB flow:
-      // 1. We'll open the auth URL in an external browser
-      const { shell } = require('electron');
-      shell.openExternal(authUrl);
+      // Create an HTTP server to receive the OAuth callback
+      const http = require('http');
+      const url = require('url');
       
-      // 2. Then prompt the user to enter the code they receive in a dialog
-      const code = await this.promptForCode();
-      
-      if (!code) {
-        throw new Error('Authentication was cancelled or no code was provided');
+      const server = http.createServer(async (req: any, res: any) => {
+        try {
+          // Parse the URL to get the authorization code
+          const parsedUrl = url.parse(req.url, true);
+          const code = parsedUrl.query.code;
+          
+          if (code) {
+            // Send branded success response
+            res.writeHead(200, {'Content-Type': 'text/html'});
+            res.end(`<html>
+  <head>
+    <title>Secure Mail Client - Authentication Successful</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: #020617;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        text-align: center;
       }
+      .container {
+        background-color: #0F172A;
+        border-radius: 0.5rem;
+        padding: 2rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+        max-width: 500px;
+        width: 90%;
+      }
+      .logo {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 1rem;
+      }
+      h1 {
+        color: #10b981;
+        margin-bottom: 1rem;
+      }
+      p {
+        margin-bottom: 1.5rem;
+        line-height: 1.5;
+      }
+      .btn {
+        background-color: #10b981;
+        color: white;
+        padding: 0.625rem 1.25rem;
+        border-radius: 0.375rem;
+        display: inline-block;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+        text-decoration: none;
+      }
+      .shield {
+        font-size: 3rem;
+        color: #10b981;
+        margin-bottom: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <svg width="80" height="80" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom: 1rem;">
+        <path d="M18 4.5L6 9V18C6 25.6 11.2 32.4 18 34.5C24.8 32.4 30 25.6 30 18V9L18 4.5Z" fill="#10b981" />
+        <rect x="16" y="14" width="4" height="8" fill="#0F172A" />
+      </svg>
+      <h1>Authentication Successful</h1>
+      <p>You have successfully authenticated with Secure Mail Client. You can now close this window and return to the application.</p>
+      <button class="btn" onclick="window.close()">Close Window</button>
+    </div>
+  </body>
+</html>`);
+            
+            // Close the server
+            server.close();
+            
+            try {
+              // Exchange code for tokens
+              const { tokens } = await this.oauth2Client.getToken(code);
+              
+              // Set credentials and save token
+              this.oauth2Client.setCredentials(tokens);
+              await this.saveToken(tokens);
+              this.isAuthenticated = true;
+              
+              resolve({ success: true });
+            } catch (error) {
+              console.error('Error getting tokens:', error);
+              reject({ success: false, error: `Failed to get tokens: ${error.message}` });
+            }
+          } else {
+            // No code in the callback - branded error page
+            res.writeHead(400, {'Content-Type': 'text/html'});
+            res.end(`<html>
+  <head>
+    <title>Secure Mail Client - Authentication Failed</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: #020617;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        text-align: center;
+      }
+      .container {
+        background-color: #0F172A;
+        border-radius: 0.5rem;
+        padding: 2rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+        max-width: 500px;
+        width: 90%;
+      }
+      h1 {
+        color: #ff4d4d;
+        margin-bottom: 1rem;
+      }
+      p {
+        margin-bottom: 1.5rem;
+        line-height: 1.5;
+      }
+      .btn {
+        background-color: #10b981;
+        color: white;
+        padding: 0.625rem 1.25rem;
+        border-radius: 0.375rem;
+        display: inline-block;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+        text-decoration: none;
+      }
+      .error-icon {
+        font-size: 3rem;
+        color: #ff4d4d;
+        margin-bottom: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="error-icon">⚠️</div>
+      <h1>Authentication Failed</h1>
+      <p>No authorization code was received. Please try again or contact support if the issue persists.</p>
+      <button class="btn" onclick="window.close()">Close Window</button>
+    </div>
+  </body>
+</html>`);
+            server.close();
+            reject({ success: false, error: 'No authorization code received' });
+          }
+        } catch (error) {
+          console.error('Error in auth callback:', error);
+          res.writeHead(500, {'Content-Type': 'text/html'});
+          res.end(`<html>
+  <head>
+    <title>Secure Mail Client - Authentication Error</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: #020617;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        text-align: center;
+      }
+      .container {
+        background-color: #0F172A;
+        border-radius: 0.5rem;
+        padding: 2rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+        max-width: 500px;
+        width: 90%;
+      }
+      h1 {
+        color: #ff4d4d;
+        margin-bottom: 1rem;
+      }
+      p {
+        margin-bottom: 1.5rem;
+        line-height: 1.5;
+      }
+      .btn {
+        background-color: #10b981;
+        color: white;
+        padding: 0.625rem 1.25rem;
+        border-radius: 0.375rem;
+        display: inline-block;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+        text-decoration: none;
+      }
+      .error-icon {
+        font-size: 3rem;
+        color: #ff4d4d;
+        margin-bottom: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="error-icon">❌</div>
+      <h1>Authentication Error</h1>
+      <p>An unexpected error occurred during authentication. Please try again later or contact support.</p>
+      <button class="btn" onclick="window.close()">Close Window</button>
+    </div>
+  </body>
+</html>`);
+          server.close();
+          reject({ success: false, error: `Authentication error: ${error.message}` });
+        }
+      });
       
-      // 3. Exchange the code for tokens
-      const { tokens } = await this.oauth2Client.getToken(code);
-      
-      // 4. Set credentials and save token
-      this.oauth2Client.setCredentials(tokens);
-      await this.saveToken(tokens);
-      this.isAuthenticated = true;
-      
-      return { success: true };
+      // Start the server on port 3000
+      server.listen(3000, 'localhost', () => {
+        console.log('Authentication server listening on port 3000');
+        
+        // Generate the auth URL
+        const authUrl = this.oauth2Client.generateAuthUrl({
+          access_type: 'offline',
+          scope: this.scopes,
+          prompt: 'consent'  // Force to get refresh token
+        });
+        
+        // Open the URL in the default browser
+        const { shell } = require('electron');
+        shell.openExternal(authUrl);
+        
+        // Handle server timeout (e.g., after 2 minutes)
+        setTimeout(() => {
+          if (server.listening) {
+            server.close();
+            reject({ success: false, error: 'Authentication timed out' });
+          }
+        }, 120000); // 2 minutes timeout
+      });
     } catch (error) {
-      console.error('OAuth authentication error:', error);
-      return {
-        success: false,
-        error: `Authentication failed: ${error.message}`
-      };
+      console.error('Error setting up authentication:', error);
+      reject({ success: false, error: `Authentication setup failed: ${error.message}` });
     }
-  }
+  });
+}
+
+
+
+
+
+
 
   /**
    * Logout and revoke tokens
