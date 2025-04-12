@@ -191,6 +191,12 @@ export interface YubikeyAPI {
     yubiKeyDetected: boolean;
   }>;
   
+  importToGPG: () => Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }>;
+  
   importToPGP: () => Promise<{
     success: boolean;
     importResults?: Array<{
@@ -200,6 +206,49 @@ export interface YubikeyAPI {
       error?: string;
     }>;
     defaultKeySet?: boolean;
+    error?: string;
+  }>;
+  
+  // New YubiKey Manager functions
+  checkPublicKey: (fingerprint: string) => Promise<{
+    found: boolean;
+    message?: string;
+  }>;
+  
+  importPublicKeyFromKeyserver: (fingerprint: string) => Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }>;
+  
+  importPublicKeyFromFile: () => Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }>;
+  
+  exportPublicKeyToFile: (fingerprint: string) => Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }>;
+  
+  uploadPublicKeyToKeyserver: (fingerprint: string) => Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }>;
+  
+  testYubiKeyFunctions: () => Promise<{
+    success: boolean;
+    results: {
+      keyDetected: boolean;
+      publicKeyFound: boolean;
+      canSign: boolean;
+      canEncrypt: boolean;
+      canDecrypt: boolean;
+    };
+    message?: string;
     error?: string;
   }>;
 }
@@ -281,6 +330,82 @@ export interface CredentialsAPI {
   }>;
 }
 
+export interface PremiumStatus {
+  isPremium: boolean;
+  email?: string;
+  expiresAt?: Date;
+  bitcoinAddress?: string;
+  paymentVerified?: boolean;
+  paymentAmount?: number;
+  premiumPriceUSD?: number;
+  premiumPriceBTC?: number;
+  btcPriceUSD?: number;
+  lastChecked?: Date;
+  isFallback?: boolean;
+  isEmergencyFallback?: boolean;
+  hasExpired?: boolean;
+  partialPayment?: boolean;  // Indicates payment was less than required but was accepted due to time passed
+}
+
+export interface PremiumAPI {
+  getStatus: () => Promise<{
+    success: boolean;
+    status?: PremiumStatus;
+    error?: string;
+  }>;
+  
+  getBitcoinAddress: (params: {
+    email: string;
+  }) => Promise<{
+    success: boolean;
+    address?: string;
+    price?: number;
+    priceUSD?: number;
+    btcPrice?: number;
+    error?: string;
+  }>;
+  
+  checkPayment: (params?: {
+    forceCheck?: boolean;
+  }) => Promise<{
+    success: boolean;
+    status?: PremiumStatus;
+    error?: string;
+    debug?: {
+      isPremium?: boolean;
+      paymentVerified?: boolean;
+      paymentAmount?: number;
+      requiredAmount?: number;
+      btcPrice?: number;
+      lastChecked?: Date;
+      partialPayment?: boolean;
+      error?: string;
+    };
+  }>;
+  
+  // XPUB key management
+  setXpub: (params: {
+    xpub: string;
+  }) => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
+  
+  getXpub: () => Promise<{
+    success: boolean;
+    xpub?: string;
+    error?: string;
+  }>;
+  
+  // Development only
+  setStatus: (params: {
+    status: Partial<PremiumStatus>;
+  }) => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
+}
+
 declare global {
   interface Window {
     electron: {
@@ -290,6 +415,7 @@ declare global {
       yubikey: YubikeyAPI;
       credentials: CredentialsAPI;
       oauth: OAuthAPI;
+      premium: PremiumAPI;
     };
   }
 }

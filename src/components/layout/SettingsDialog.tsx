@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mail, Key, Shield, Usb, Loader, CheckCircle, Lock } from 'lucide-react';
+import { X, Mail, Key, Shield, Usb, Loader, CheckCircle, Lock, Crown, Star } from 'lucide-react';
 import { Dialog, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import OAuthCodePrompt from '../mail/OAuthCodePrompt';
+import PremiumStatus from '../premium/PremiumStatus';
 
 // Create a special wider dialog content component just for settings
 const WideDialogContent = React.forwardRef<
@@ -27,15 +28,17 @@ WideDialogContent.displayName = "WideDialogContent";
 interface SettingsDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  initialTab?: string;
 }
 
-const SettingsDialog = ({ isOpen, onClose }: SettingsDialogProps) => {
-  const [activeTab, setActiveTab] = useState('email');
+const SettingsDialog = ({ isOpen, onClose, initialTab = 'email' }: SettingsDialogProps) => {
+  const [activeTab, setActiveTab] = useState(initialTab);
   
   const tabs = [
     { id: 'email', label: 'Email Settings', icon: Mail },
     { id: 'keys', label: 'Key Management', icon: Key },
     { id: 'yubikey', label: 'YubiKey', icon: Usb },
+    { id: 'premium', label: 'Premium', icon: Crown },
   ];
 
   return (
@@ -87,6 +90,7 @@ const SettingsDialog = ({ isOpen, onClose }: SettingsDialogProps) => {
                 {activeTab === 'email' && <EmailSettings />}
                 {activeTab === 'keys' && <KeyManagement />}
                 {activeTab === 'yubikey' && <YubiKeySettings />}
+                {activeTab === 'premium' && <PremiumSettings />}
               </div>
             </div>
           </div>
@@ -1019,6 +1023,43 @@ const KeyManagement = () => {
               </svg>
               Generate New Key Pair
             </button>
+            <button
+              onClick={async () => {
+                if (window.electron?.yubikey) {
+                  try {
+                    // First verify YubiKey is connected
+                    const detectResult = await window.electron.yubikey.detect();
+                    if (!detectResult.success || !detectResult.yubikey?.detected) {
+                      throw new Error('YubiKey not detected');
+                    }
+                    
+                    // First do a direct GPG import for better reliability
+                    setSuccess('Importing YubiKey keys to GPG...');
+                    const gpgResult = await window.electron.yubikey.importToGPG();
+                    
+                    if (gpgResult.success) {
+                      // Now import to app's PGP store
+                      const importResult = await window.electron.yubikey.importToPGP();
+                      if (importResult.success) {
+                        setSuccess('YubiKey keys imported to GPG and PGP store successfully');
+                      } else {
+                        setError(importResult.error || 'Failed to import YubiKey keys to PGP store');
+                      }
+                    } else {
+                      setError(gpgResult.error || 'Failed to import YubiKey keys to GPG');
+                    }
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : 'An unknown error occurred');
+                  }
+                }
+              }}
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 text-xs font-medium flex items-center"
+            >
+              <svg className="w-3.5 h-3.5 mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+              </svg>
+              Import YubiKey to GPG
+            </button>
           </div>
         </div>
       )}
@@ -1287,6 +1328,34 @@ const YubiKeySettings = () => {
       {/* Status Section */}
       {activeSection === 'status' && (
         <div className="space-y-4">
+          {/* GPG Integration Notice - NEW */}
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-4 relative">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 mr-3 mt-1">
+                <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <h5 className="text-blue-400 font-medium text-xs">GPG-YubiKey Integration</h5>
+                <p className="text-blue-300/80 text-[10px] mt-1">
+                  This application uses GPG (GnuPG) to interact with your YubiKey. 
+                  If you encounter signing errors such as "GPG cannot access YubiKey keys", 
+                  click the "Import YubiKey to GPG" button in the Key Management tab. 
+                  This helps synchronize your YubiKey keys with your GPG keyring, which is required for signing operations.
+                </p>
+                <div className="mt-2">
+                  <button
+                    onClick={() => setActiveSection('setup')}
+                    className="px-3 py-1 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-md text-[10px] border border-blue-500/20 transition-colors"
+                  >
+                    View Setup Guide
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           {/* YubiKey Status Card */}
           <div className="relative overflow-hidden rounded-lg border border-border-dark bg-gradient-to-br from-base-dark via-base-dark to-secondary-dark shadow-md">
             {/* Background decoration */}
@@ -1526,6 +1595,23 @@ const YubiKeySettings = () => {
                 <div className="relative">
                   <div className="absolute -left-10 w-6 h-6 rounded-full bg-accent-green flex items-center justify-center font-bold text-black text-xs">3</div>
                   <div className="bg-base-dark/70 rounded-lg p-3 border border-border-dark">
+                    <h5 className="text-white text-xs mb-1">Setup GPG Integration</h5>
+                    <p className="text-gray-400 text-[10px]">
+                      Go to Key Management tab and click "Import YubiKey to GPG" to ensure GPG can access your YubiKey's 
+                      hardware keys. This is essential for signing operations.
+                    </p>
+                    <div className="bg-blue-500/20 border border-blue-500/20 rounded p-2 mt-2">
+                      <p className="text-blue-300 text-[9px]">
+                        <span className="font-bold">Tip:</span> If you see "GPG cannot access YubiKey keys" errors, 
+                        this step is required to fix the issue.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="relative">
+                  <div className="absolute -left-10 w-6 h-6 rounded-full bg-accent-green flex items-center justify-center font-bold text-black text-xs">4</div>
+                  <div className="bg-base-dark/70 rounded-lg p-3 border border-border-dark">
                     <h5 className="text-white text-xs mb-1">Configure PGP Keys</h5>
                     <p className="text-gray-400 text-[10px]">
                       Go to Key Management tab and either import an existing PGP key or generate a new key pair that will be securely stored on your YubiKey.
@@ -1534,11 +1620,12 @@ const YubiKeySettings = () => {
                 </div>
                 
                 <div className="relative">
-                  <div className="absolute -left-10 w-6 h-6 rounded-full bg-accent-green flex items-center justify-center font-bold text-black text-xs">4</div>
+                  <div className="absolute -left-10 w-6 h-6 rounded-full bg-accent-green flex items-center justify-center font-bold text-black text-xs">5</div>
                   <div className="bg-base-dark/70 rounded-lg p-3 border border-border-dark">
                     <h5 className="text-white text-xs mb-1">Test Functionality</h5>
                     <p className="text-gray-400 text-[10px]">
                       Once your YubiKey is configured, you can use it to sign and decrypt messages. The app will automatically detect and use your hardware key.
+                      When prompted for your PIN, make sure to enter it correctly.
                     </p>
                   </div>
                 </div>
@@ -1629,6 +1716,59 @@ const YubiKeySettings = () => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+const PremiumSettings = () => {
+  const [isPremium, setIsPremium] = useState(false);
+
+  useEffect(() => {
+    // Check premium status on mount
+    const checkPremiumStatus = async () => {
+      try {
+        if (window.electron?.premium) {
+          const result = await window.electron.premium.getStatus();
+          if (result.success && result.status) {
+            setIsPremium(result.status.isPremium);
+          }
+        }
+      } catch (err) {
+        console.error('Error checking premium status:', err);
+      }
+    };
+    
+    checkPremiumStatus();
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-secondary-dark/70 rounded-lg border border-border-dark p-4">
+        <div className="flex items-center mb-3">
+          <Crown className="h-4 w-4 mr-1.5 text-accent-green" />
+          <h3 className="text-sm font-medium text-white">Premium Status</h3>
+        </div>
+        
+        <div className="mb-4">
+          <PremiumStatus checkPayment={true} showUpgrade={true} />
+        </div>
+        
+        {isPremium && (
+          <div className="mt-6 bg-accent-green/10 border border-accent-green/20 rounded-lg p-3">
+            <div className="flex items-center text-accent-green mb-2">
+              <CheckCircle className="h-4 w-4 mr-2" />
+              <p className="text-xs font-medium">Premium Features Active</p>
+            </div>
+            <ul className="text-xs text-gray-300 space-y-2 pl-6 list-disc">
+              <li>Priority Support via Secure Email</li>
+              <li>Enhanced Encryption Options</li>
+              <li>Advanced YubiKey Integration</li>
+              <li>Unlimited Email Storage</li>
+              <li>Regular Security Audits</li>
+            </ul>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

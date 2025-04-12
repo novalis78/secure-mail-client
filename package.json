@@ -1,22 +1,26 @@
 {
   "name": "secure-mail-client",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.8",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "tsc -b electron/tsconfig.json && node scripts/copy-scripts.js && concurrently \"vite\" \"electron .\"",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/copy-scripts.js && echo \"Successfully copied YubiKey scripts to output directory\"",
     "lint": "eslint .",
     "preview": "vite preview",
-    "electron:build": "tsc -b && vite build && electron-builder",
-    "build:mac": "tsc -b && vite build && electron-builder --mac",
-    "build:win": "tsc -b && vite build && electron-builder --win",
-    "build:linux": "tsc -b && vite build && electron-builder --linux"
+    "electron:build": "tsc -b && vite build && node scripts/copy-scripts.js && electron-builder",
+    "build:mac": "tsc -b && vite build && node scripts/copy-scripts.js && electron-builder --mac",
+    "build:win": "tsc -b && vite build && node scripts/copy-scripts.js && electron-builder --win",
+    "build:linux": "tsc -b && vite build && node scripts/copy-scripts.js && electron-builder --linux"
   },
   "build": {
     "appId": "com.securemailclient.app",
     "productName": "Secure Mail Client",
-    "files": ["dist/**/*", "dist-electron/**/*", "scripts/**/*"],
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "scripts/**/*"
+    ],
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -25,20 +29,31 @@
       {
         "from": "scripts",
         "to": "scripts",
-        "filter": ["**/*.sh"]
+        "filter": [
+          "**/*.sh"
+        ]
       }
     ],
     "mac": {
       "icon": "build/icons/icon.icns",
-      "target": ["dmg", "zip"]
+      "target": [
+        "dmg",
+        "zip"
+      ]
     },
     "win": {
       "icon": "build/icons/icon.ico",
-      "target": ["nsis", "portable"]
+      "target": [
+        "nsis",
+        "portable"
+      ]
     },
     "linux": {
       "icon": "build/icons",
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "category": "Office"
     }
   },
@@ -46,6 +61,9 @@
     "@heroicons/react": "^2.1.1",
     "@radix-ui/react-dialog": "^1.1.5",
     "bcrypt": "^5.1.1",
+    "bip32": "^5.0.0-rc.0",
+    "bitcoinjs-lib": "^6.1.7",
+    "bs58check": "^4.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^16.4.7",
@@ -57,9 +75,11 @@
     "mailparser": "^3.7.2",
     "node-imap": "^0.9.6",
     "openpgp": "^5.11.0",
+    "qrcode.react": "^4.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "tailwind-merge": "^2.6.0"
+    "tailwind-merge": "^2.6.0",
+    "tiny-secp256k1": "^2.2.3"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",

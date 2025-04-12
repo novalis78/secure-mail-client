@@ -86,7 +86,28 @@ contextBridge.exposeInMainWorld('electron', {
     hasPGPKeys: () => ipcRenderer.invoke('yubikey:has-pgp-keys'),
     getPGPFingerprints: () => ipcRenderer.invoke('yubikey:get-pgp-fingerprints'),
     exportPublicKeys: () => ipcRenderer.invoke('yubikey:export-public-keys'),
-    importToPGP: () => ipcRenderer.invoke('yubikey:import-to-pgp')
+    importToPGP: () => ipcRenderer.invoke('yubikey:import-to-pgp'),
+    importToGPG: () => ipcRenderer.invoke('yubikey:import-to-gpg'),
+    // YubiKey Manager functions
+    checkPublicKey: (fingerprint: string) => 
+      ipcRenderer.invoke('yubikey:check-public-key', fingerprint),
+    importPublicKeyFromKeyserver: (fingerprint: string) => 
+      ipcRenderer.invoke('yubikey:import-from-keyserver', fingerprint),
+    importPublicKeyFromFile: () => 
+      ipcRenderer.invoke('yubikey:import-from-file'),
+    exportPublicKeyToFile: (fingerprint: string) => 
+      ipcRenderer.invoke('yubikey:export-to-file', fingerprint),
+    uploadPublicKeyToKeyserver: (fingerprint: string) => 
+      ipcRenderer.invoke('yubikey:upload-to-keyserver', fingerprint),
+    // New YubiKey URL functions
+    hasPublicKeyURL: () => 
+      ipcRenderer.invoke('yubikey:has-public-key-url'),
+    getPublicKeyURL: () => 
+      ipcRenderer.invoke('yubikey:get-public-key-url'),
+    importPublicKeyFromCardURL: () => 
+      ipcRenderer.invoke('yubikey:import-from-card-url'),
+    testYubiKeyFunctions: () => 
+      ipcRenderer.invoke('yubikey:test-functions')
   },
   credentials: {
     saveGmail: (params: { email: string; password: string }) => 
@@ -99,5 +120,21 @@ contextBridge.exposeInMainWorld('electron', {
       ipcRenderer.invoke('credentials:get-imap'),
     clear: () => 
       ipcRenderer.invoke('credentials:clear')
+  },
+  premium: {
+    getStatus: () => 
+      ipcRenderer.invoke('premium:get-status'),
+    getBitcoinAddress: (params: { email: string }) => 
+      ipcRenderer.invoke('premium:get-bitcoin-address', params),
+    checkPayment: (params?: { forceCheck?: boolean }) => 
+      ipcRenderer.invoke('premium:check-payment', params),
+    // XPUB key management
+    setXpub: (params: { xpub: string }) => 
+      ipcRenderer.invoke('premium:set-xpub', params),
+    getXpub: () => 
+      ipcRenderer.invoke('premium:get-xpub'),
+    // Development only - would be removed in production
+    setStatus: (params: { status: any }) => 
+      ipcRenderer.invoke('premium:set-status', params)
   }
 });
