@@ -1629,13 +1629,9 @@ ipcMain.handle('app:close', () => {
 ipcMain.on('electron:window-drag', () => {
   if (mainWindow) {
     mainWindow.webContents.send('electron:window-drag-started');
-    if (process.platform === 'linux') {
-      // Linux requires a special approach for dragging frameless windows
-      mainWindow.beginFramelessDrag();
-    } else {
-      // For other platforms, this is handled by Chromium natively
-      // when using -webkit-app-region in CSS
-    }
+    // For all platforms, this is now handled by Chromium natively
+    // when using -webkit-app-region in CSS
+    // The beginFramelessDrag() method was removed in newer Electron versions
   }
 });
 

@@ -1556,6 +1556,15 @@ electron_1.ipcMain.handle('app:close', () => {
     }
     return { success: true };
 });
+// Add handler for window dragging
+electron_1.ipcMain.on('electron:window-drag', () => {
+    if (mainWindow) {
+        mainWindow.webContents.send('electron:window-drag-started');
+        // For all platforms, this is now handled by Chromium natively
+        // when using -webkit-app-region in CSS
+        // The beginFramelessDrag() method was removed in newer Electron versions
+    }
+});
 // For managing the XPUB key used for address derivation
 electron_1.ipcMain.handle('premium:set-xpub', (_, { xpub }) => {
     try {

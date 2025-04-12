@@ -2,6 +2,22 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 // electron/src/preload.ts
 const electron_1 = require("electron");
+// Register drag data attribute handler
+document.addEventListener('DOMContentLoaded', () => {
+    // Handle dragging regions
+    document.addEventListener('mousedown', (e) => {
+        const target = e.target;
+        const dragElement = target.closest('[data-electron-drag]');
+        const noDragElement = target.closest('[data-electron-no-drag]');
+        // No-drag elements take precedence over drag elements
+        if (noDragElement) {
+            return;
+        }
+        if (dragElement) {
+            electron_1.ipcRenderer.send('electron:window-drag');
+        }
+    });
+});
 electron_1.contextBridge.exposeInMainWorld('electron', {
     ipcRenderer: {
         send: (channel, data) => {
