@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "electron:build": "tsc -b && vite build && node scripts/copy-scripts.js && electron-builder",
-    "build:mac": "tsc -b && vite build && node scripts/copy-scripts.js && electron-builder --mac",
+    "build:mac": "tsc -b && vite build && node scripts/copy-scripts.js && electron-builder --mac --publish=never",
+    "build:mac-fast": "tsc -b && vite build && node scripts/copy-scripts.js && electron-builder --mac --arm64 --publish=never --config.productName='Secure Mail Client 1.0.8'",
     "build:win": "tsc -b && vite build && node scripts/copy-scripts.js && electron-builder --win",
     "build:linux": "tsc -b && vite build && node scripts/copy-scripts.js && electron-builder --linux"
   },

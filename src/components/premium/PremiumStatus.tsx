@@ -447,7 +447,7 @@ const PremiumStatus: React.FC<PremiumStatusProps> = ({
                 }`} 
                 size={160}
                 level="H"
-                margin={2}
+                // QR code has built-in margin/quiet zone
               />
             </div>
             
