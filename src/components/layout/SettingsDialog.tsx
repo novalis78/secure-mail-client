@@ -567,7 +567,7 @@ const EmailSettings = () => {
                   </button>
                   <button
                     onClick={handleOAuthLogout}
-                    className="bg-red-500/20 text-red-500 px-3 py-2 rounded-lg hover:bg-red-500/30 text-xs font-medium w-24"
+                    className="bg-red-500/20 text-red-500 px-3 py-2 rounded-lg hover:bg-red-500/30 text-xs font-medium w-24 flex items-center justify-center h-[28px]"
                   >
                     Disconnect
                   </button>
