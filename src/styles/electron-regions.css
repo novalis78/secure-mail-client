@@ -1,0 +1,10 @@
+/* CSS for Electron draggable regions support */
+[data-electron-drag="true"] {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+[data-electron-no-drag="true"] {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
