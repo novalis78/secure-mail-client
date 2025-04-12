@@ -1617,6 +1617,14 @@ ipcMain.handle('premium:set-status', (_, { status }) => {
   }
 });
 
+// Add IPC handler for closing the app
+ipcMain.handle('app:close', () => {
+  if (mainWindow) {
+    mainWindow.close();
+  }
+  return { success: true };
+});
+
 // For managing the XPUB key used for address derivation
 ipcMain.handle('premium:set-xpub', (_, { xpub }) => {
   try {

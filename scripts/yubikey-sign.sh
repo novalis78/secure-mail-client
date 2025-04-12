@@ -307,16 +307,35 @@ fi
 
 log "Key successfully found in keyring"
 
-# Set up PIN entry if provided
+# Set up PIN entry if provided - Enhanced version with multiple PIN passing methods
+PIN=""
+
+# Method 1: Get PIN from environment variables
 if [ -n "$PINENTRY_USER_DATA" ] || [ -n "$GPG_PIN" ]; then
   PIN=${PINENTRY_USER_DATA:-$GPG_PIN}
-  log "Using provided PIN for signing (length: ${#PIN})"
+  log "Using PIN from environment variables (length: ${#PIN})"
+# Method 2: Get PIN from file
+elif [ -n "$PIN_FILE" ] && [ -f "$PIN_FILE" ]; then
+  PIN=$(cat "$PIN_FILE")
+  log "Using PIN from PIN_FILE (length: ${#PIN})"
+  
+  # Secure delete the PIN file after reading
+  if [ -f "$PIN_FILE" ]; then
+    # Overwrite with random data before deleting
+    dd if=/dev/urandom of="$PIN_FILE" bs=1 count=$(stat -f%z "$PIN_FILE") 2>/dev/null || true
+    rm -f "$PIN_FILE"
+    log "Securely deleted PIN_FILE after reading"
+  fi
+fi
 
-  # Export PIN as an environment variable (some GPG setups can use this)
+if [ -n "$PIN" ]; then
+  log "PIN provided, setting up PIN entry (length: ${#PIN})"
+
+  # Export PIN as environment variables (some GPG setups can use this)
   export PINENTRY_USER_DATA="$PIN"
   export GPG_PIN="$PIN"
   
-  # Create a more reliable pinentry program
+  # Create a more reliable pinentry program with enhanced error handling
   PINENTRY_SCRIPT="/tmp/pinentry-yubikey-$$.sh"
   cat > "$PINENTRY_SCRIPT" << EOF
 #!/bin/bash
@@ -359,7 +378,7 @@ done
 EOF
   chmod 755 "$PINENTRY_SCRIPT"
 
-  log "Created custom pinentry script at $PINENTRY_SCRIPT"
+  log "Created enhanced pinentry script at $PINENTRY_SCRIPT"
   
   # We'll use the system's GPG home but override the pinentry program
   # This keeps all the smartcard configuration intact
@@ -370,6 +389,7 @@ EOF
   fi
   
   # Create a custom gpg-agent.conf with our pinentry program
+  mkdir -p "$ORIGINAL_GNUPGHOME"
   echo "pinentry-program $PINENTRY_SCRIPT" > "$ORIGINAL_GNUPGHOME/gpg-agent.conf"
   echo "debug-level guru" >> "$ORIGINAL_GNUPGHOME/gpg-agent.conf"
   echo "log-file $LOG_FILE.agent" >> "$ORIGINAL_GNUPGHOME/gpg-agent.conf"
@@ -377,11 +397,17 @@ EOF
   log "Updated gpg-agent.conf with custom pinentry program"
   
   # Restart the agent to use our new configuration
-  gpgconf --reload gpg-agent
-  log "Reloaded gpg-agent with new configuration"
+  gpgconf --reload gpg-agent || log "Failed to reload gpg-agent, continuing anyway"
+  log "Attempted to reload gpg-agent with new configuration"
   
   # Sleep briefly to let the agent restart
   sleep 2
+  
+  # Write PIN to a file as an additional fallback method
+  # Some versions of GPG can read the PIN from a file
+  echo "$PIN" > "$TEMP_DIR/pin.txt"
+  chmod 600 "$TEMP_DIR/pin.txt"
+  log "Created PIN file as fallback method"
 fi
 
 # Check if signing is marked as unavailable from earlier steps
@@ -402,14 +428,34 @@ else
   # Try to sign directly with the user's GPG environment
   log "Signing message using YubiKey with key: $SIGNATURE_KEY"
   
-  # First try to use the key directly with detach-sign
-  SIGN_OUTPUT=$(gpg --detach-sign --armor --default-key "$SIGNATURE_KEY" "$MESSAGE_FILE" 2>&1)
+  # Try multiple signing methods for better reliability
+  # Method 1: Use GPG with pinentry mode set to loopback (allows PIN from script)
+  log "Trying first signing method: detach-sign with loopback"
+  SIGN_OUTPUT=$(gpg --detach-sign --armor --pinentry-mode loopback --default-key "$SIGNATURE_KEY" "$MESSAGE_FILE" 2>&1)
   SIGN_RESULT=$?
   
   # Save signing output to log
-  echo "--- SIGNING OUTPUT ---" >> "$LOG_FILE"
+  echo "--- SIGNING OUTPUT (METHOD 1) ---" >> "$LOG_FILE"
   echo "$SIGN_OUTPUT" >> "$LOG_FILE"
-  echo "--- END SIGNING OUTPUT ---" >> "$LOG_FILE"
+  echo "--- END SIGNING OUTPUT (METHOD 1) ---" >> "$LOG_FILE"
+  
+  # If that failed, try a second method
+  if [ $SIGN_RESULT -ne 0 ] || [ ! -f "$MESSAGE_FILE.asc" ]; then
+    log "First signing method failed, trying alternate method with batch mode"
+    
+    # Method 2: Try with batch mode
+    SIGN_OUTPUT_2=$(gpg --batch --yes --detach-sign --armor --default-key "$SIGNATURE_KEY" "$MESSAGE_FILE" 2>&1)
+    SIGN_RESULT=$?
+    
+    echo "--- SIGNING OUTPUT (METHOD 2) ---" >> "$LOG_FILE"
+    echo "$SIGN_OUTPUT_2" >> "$LOG_FILE"
+    echo "--- END SIGNING OUTPUT (METHOD 2) ---" >> "$LOG_FILE"
+    
+    # If output from second method, use that instead
+    if [ -n "$SIGN_OUTPUT_2" ]; then
+      SIGN_OUTPUT="$SIGN_OUTPUT_2"
+    fi
+  fi
   
   # Check if signing succeeded
   if [ $SIGN_RESULT -eq 0 ] && [ -f "$MESSAGE_FILE.asc" ]; then

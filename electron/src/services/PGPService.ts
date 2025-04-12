@@ -192,34 +192,11 @@ export class PGPService {
         }
       };
       
-      // Properly handle public key attachment
+      // Don't handle multipart in the PGP service anymore
+      // We'll extract the public key after encryption and pass it to the OAuthService
       if (attachPublicKey && keyPair && keyPair.publicKey) {
-        console.log('[PGPService] Adding public key to encryption options');
-        
-        // OpenPGP.js doesn't have a direct way to attach public keys to messages,
-        // so we need to create a multipart message with the public key as an attachment
-        
-        // Create a multipart message with the original message and the public key
-        // This is the standard way PGP clients like GPG, Thunderbird, etc. handle key attachment
-        const boundary = `----PGPPublicKeyAttachment_${Date.now().toString(16)}`;
-        const multipartMessage = `Content-Type: multipart/mixed; boundary="${boundary}"
-
---${boundary}
-Content-Type: text/plain; charset=utf-8
-
-${message}
-
---${boundary}
-Content-Type: application/pgp-keys
-Content-Description: OpenPGP Public Key
-Content-Disposition: attachment; filename="publickey.asc"
-
-${keyPair.publicKey}
---${boundary}--`;
-
-        // Use the multipart message as the input for encryption
-        encryptOptions.message = await openpgp.createMessage({ text: multipartMessage });
-        console.log('[PGPService] Created multipart message with public key attachment');
+        console.log('[PGPService] Public key will be attached to email');
+        // We will attach the public key at the email level, not in the PGP message
       }
       
       // Add signing if enabled and we have a default key
@@ -574,15 +551,202 @@ ${publicKeyArmored.split('-----BEGIN PGP PUBLIC KEY BLOCK-----')[1] || 'Public k
   }
 
   /**
-   * Decrypt a message using our private key
+   * Decrypt a message using our private key or YubiKey
    */
   async decryptMessage(encryptedMessage: string, passphrase: string): Promise<string> {
     try {
-      // Get our private key
+      console.log('[PGPService] Beginning message decryption');
+      
+      // First, check if YubiKey is available and should be used
+      const { YubiKeyService } = require('./YubiKeyService');
+      const yubiKeyService = new YubiKeyService();
+      
+      // Check for YubiKey presence
+      try {
+        const yubiKeyInfo = await yubiKeyService.detectYubiKey();
+        if (yubiKeyInfo.detected && yubiKeyInfo.pgpInfo) {
+          console.log('[PGPService] YubiKey detected, attempting YubiKey decryption');
+          
+          try {
+            // Try to decrypt with YubiKey, passing the passphrase as PIN
+            const decryptResult = await yubiKeyService.decryptWithYubiKey(encryptedMessage, passphrase);
+            
+            // Check if PIN is needed
+            if (!decryptResult.success && decryptResult.needsPin) {
+              console.log('[PGPService] YubiKey decryption requires PIN');
+              if (!passphrase) {
+                throw new Error('PIN required for YubiKey decryption');
+              } else {
+                // We already provided a passphrase but it was rejected
+                throw new Error('Incorrect PIN for YubiKey decryption');
+              }
+            }
+            
+            // Check for success
+            if (decryptResult.success && decryptResult.decryptedText) {
+              console.log('[PGPService] Successfully decrypted with YubiKey');
+              return decryptResult.decryptedText;
+            } else {
+              console.warn('[PGPService] YubiKey decryption failed:', decryptResult.error);
+              console.warn('[PGPService] Will try standard decryption methods');
+            }
+          } catch (yubiKeyError) {
+            console.warn('[PGPService] Error during YubiKey decryption:', yubiKeyError);
+            // Continue to standard decryption method
+          }
+        }
+      } catch (yubiKeyDetectionError) {
+        console.warn('[PGPService] Error detecting YubiKey:', yubiKeyDetectionError);
+        // Continue to standard decryption
+      }
+      
+      // Get our default key information
+      const config = readConfig();
+      const keyMetadata = (config.pgpKeys || {}) as Record<string, { 
+        fingerprint: string; 
+        email: string;
+        name?: string;
+        isDefault?: boolean;
+        hasPrivateKey?: boolean;
+        fromYubiKey?: boolean;
+      }>;
+      
+      // Find the default key from metadata
+      const defaultKeyMeta = Object.values(keyMetadata)
+        .find(key => key && key.isDefault);
+      
+      if (!defaultKeyMeta) {
+        console.error('[PGPService] No default key found for decryption');
+        throw new Error('No default key found for decryption');
+      }
+      
+      console.log('[PGPService] Using default key with fingerprint:', defaultKeyMeta.fingerprint);
+      
+      // If this key is from YubiKey but we couldn't decrypt with YubiKey directly
+      if (defaultKeyMeta.fromYubiKey && !defaultKeyMeta.hasPrivateKey) {
+        // Special handling for YubiKey keys without private key material
+        console.log('[PGPService] Default key is from YubiKey but we need to try GPG');
+        
+        // Try using GPG CLI to decrypt the message
+        try {
+          const util = require('util');
+          const execAsync = util.promisify(require('child_process').exec);
+          
+          // Write the encrypted message to a temporary file
+          const tempDir = path.join(app.getPath('temp'), 'secure-mail-client');
+          if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
+          }
+          
+          const tempEncryptedPath = path.join(tempDir, 'encrypted-message.asc');
+          const tempDecryptedPath = path.join(tempDir, 'decrypted-message.txt');
+          
+          // Write encrypted message to temp file
+          fs.writeFileSync(tempEncryptedPath, encryptedMessage);
+          
+          // Set up environment for PIN passing
+          let env = { ...process.env };
+          let pinCommand = '';
+          
+          // If passphrase is provided, use it as PIN
+          if (passphrase) {
+            // Create a secure PIN file
+            const pinFile = path.join(tempDir, 'pin.txt');
+            fs.writeFileSync(pinFile, passphrase, { mode: 0o600 });
+            
+            pinCommand = `--passphrase-file "${pinFile}" `;
+            
+            // Also add environment variables for PIN
+            env.PINENTRY_USER_DATA = passphrase;
+            env.GPG_PIN = passphrase;
+            env.GPG_TTY = process.stdout.isTTY ? process.env.TTY : undefined;
+          }
+          
+          // Try GPG decryption with the provided PIN/passphrase
+          try {
+            // Execute GPG with PIN support
+            const { stdout } = await execAsync(
+              `gpg ${pinCommand}--decrypt --batch --yes --output "${tempDecryptedPath}" "${tempEncryptedPath}"`,
+              { env, timeout: 30000 }
+            );
+            
+            // Check if decryption was successful
+            if (fs.existsSync(tempDecryptedPath)) {
+              const decryptedText = fs.readFileSync(tempDecryptedPath, 'utf8');
+              
+              // Clean up temp files
+              try {
+                fs.unlinkSync(tempEncryptedPath);
+                fs.unlinkSync(tempDecryptedPath);
+                
+                // Clean up PIN file if it exists
+                if (passphrase) {
+                  const pinFile = path.join(tempDir, 'pin.txt');
+                  if (fs.existsSync(pinFile)) {
+                    fs.unlinkSync(pinFile);
+                  }
+                }
+              } catch (cleanupError) {
+                console.warn('[PGPService] Error cleaning up temp files:', cleanupError);
+              }
+              
+              console.log('[PGPService] Successfully decrypted with GPG');
+              return decryptedText;
+            } else {
+              throw new Error('GPG decryption failed - no output file created');
+            }
+          } catch (gpgError) {
+            console.error('[PGPService] GPG decryption error:', gpgError);
+            
+            // Check if the error indicates PIN issues
+            const errorMsg = gpgError.message || '';
+            
+            if (errorMsg.toLowerCase().includes('pin')) {
+              if (!passphrase) {
+                throw new Error('PIN required for YubiKey decryption');
+              } else {
+                throw new Error('Incorrect PIN for YubiKey decryption');
+              }
+            } else if (errorMsg.toLowerCase().includes('passphrase')) {
+              if (!passphrase) {
+                throw new Error('Passphrase required for decryption');
+              } else {
+                throw new Error('Incorrect passphrase for decryption');
+              }
+            } else {
+              throw new Error(`Cannot decrypt message with YubiKey: ${errorMsg}`);
+            }
+          } finally {
+            // Ensure cleanup
+            try {
+              if (fs.existsSync(tempEncryptedPath)) {
+                fs.unlinkSync(tempEncryptedPath);
+              }
+              if (fs.existsSync(tempDecryptedPath)) {
+                fs.unlinkSync(tempDecryptedPath);
+              }
+              // Clean up PIN file if it exists
+              if (passphrase) {
+                const pinFile = path.join(tempDir, 'pin.txt');
+                if (fs.existsSync(pinFile)) {
+                  fs.unlinkSync(pinFile);
+                }
+              }
+            } catch (finalCleanupError) {
+              console.warn('[PGPService] Error in final cleanup:', finalCleanupError);
+            }
+          }
+        } catch (gpgError) {
+          console.error('[PGPService] GPG decryption setup error:', gpgError);
+          throw new Error(`Cannot decrypt message with YubiKey: ${gpgError.message || 'Unknown error'}`);
+        }
+      }
+      
+      // Standard OpenPGP.js decryption for keys with private key material
       const keyPair = this.getDefaultKeyPair();
       
       if (!keyPair) {
-        throw new Error('No default key pair found');
+        throw new Error('No default key pair with private key found');
       }
 
       // Parse the private key

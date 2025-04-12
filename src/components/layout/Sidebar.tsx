@@ -1,13 +1,36 @@
-import { useState } from 'react';
-import { Star, Trash2, Archive, Send, Flag, Inbox, PenSquare } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Star, Trash2, Archive, Send, Flag, Inbox, PenSquare, Crown } from 'lucide-react';
+import PremiumStatus from '../premium/PremiumStatus';
 
 interface SidebarProps {
   activePath: string;
   setActivePath: (path: string) => void;
   onComposeClick?: () => void;
+  onPremiumClick?: () => void;
 }
 
-const Sidebar = ({ activePath, setActivePath, onComposeClick }: SidebarProps) => {
+const Sidebar = ({ activePath, setActivePath, onComposeClick, onPremiumClick }: SidebarProps) => {
+  const [isPremium, setIsPremium] = useState(false);
+  const [showPremiumStatus, setShowPremiumStatus] = useState(false);
+  
+  useEffect(() => {
+    // Check premium status on mount
+    checkPremiumStatus();
+  }, []);
+  
+  const checkPremiumStatus = async () => {
+    try {
+      if (window.electron?.premium) {
+        const result = await window.electron.premium.getStatus();
+        if (result.success && result.status) {
+          setIsPremium(result.status.isPremium);
+        }
+      }
+    } catch (err) {
+      console.error('Error checking premium status:', err);
+    }
+  };
+  
   const menuItems = [
     { label: 'Inbox', path: 'inbox', icon: <Inbox size={18} /> },
     { label: 'Drafts', path: 'drafts', icon: <PenSquare size={18} /> },
@@ -56,6 +79,31 @@ const Sidebar = ({ activePath, setActivePath, onComposeClick }: SidebarProps) =>
           ))}
         </ul>
       </nav>
+      
+      {/* Premium Status */}
+      <div className="px-3 pb-2">
+        {showPremiumStatus ? (
+          <PremiumStatus 
+            showUpgrade={true} 
+            onClose={() => setShowPremiumStatus(false)}
+          />
+        ) : (
+          <button 
+            onClick={onPremiumClick || (() => setShowPremiumStatus(true))}
+            className={`w-full flex items-center justify-between p-2 rounded-lg text-sm transition-colors ${
+              isPremium 
+                ? 'bg-accent-green/20 text-accent-green border border-accent-green/30' 
+                : 'bg-gray-700/50 text-gray-400 hover:text-gray-300 hover:bg-gray-700/80 border border-gray-700'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <Crown size={16} className={isPremium ? 'text-yellow-400' : 'text-gray-500'} />
+              <span>{isPremium ? 'Premium Active' : 'Upgrade to Premium'}</span>
+            </div>
+            <Star size={16} className={isPremium ? 'text-yellow-400 fill-yellow-400' : 'text-gray-500'} />
+          </button>
+        )}
+      </div>
       
       {/* Storage Usage */}
       <div className="p-4 border-t border-border-dark">

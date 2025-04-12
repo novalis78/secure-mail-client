@@ -10,6 +10,9 @@ contextBridge.exposeInMainWorld('electron', {
       ipcRenderer.on(channel, (_, ...args) => func(...args));
     }
   },
+  app: {
+    close: () => ipcRenderer.invoke('app:close')
+  },
   imap: {
     connect: (config: any) => ipcRenderer.invoke('imap:connect', config),
     fetchEmails: () => ipcRenderer.invoke('imap:fetch-emails'),

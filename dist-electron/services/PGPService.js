@@ -154,15 +154,44 @@ class PGPService {
     async encryptMessage(message, recipientFingerprints, options = {}) {
         try {
             const { sign = true, attachPublicKey = true, passphrase = '' } = options;
-            // Get public keys for all recipients
+            // Get public keys for all recipients - using our enhanced method with GPG fallback
             const publicKeys = await Promise.all(recipientFingerprints.map(fp => this.getPublicKeyByFingerprint(fp)));
             // Parse the public keys
             const parsedPublicKeys = await Promise.all(publicKeys.map(key => openpgp.readKey({ armoredKey: key })));
+            // Get our default key pair to include ourselves as a recipient
+            const keyPair = this.getDefaultKeyPair();
+            let senderPublicKey = null;
+            // Add our own public key to the recipients list so we can decrypt our sent messages
+            if (keyPair && keyPair.publicKey) {
+                try {
+                    senderPublicKey = await openpgp.readKey({ armoredKey: keyPair.publicKey });
+                    // Only add if not already in the recipients list
+                    if (!recipientFingerprints.includes(keyPair.fingerprint)) {
+                        parsedPublicKeys.push(senderPublicKey);
+                        console.log('[PGPService] Added sender as recipient for self-decryption');
+                    }
+                }
+                catch (error) {
+                    console.warn('[PGPService] Could not add sender as recipient:', error);
+                }
+            }
             // Set up encryption options
             const encryptOptions = {
                 message: await openpgp.createMessage({ text: message }),
-                encryptionKeys: parsedPublicKeys
+                encryptionKeys: parsedPublicKeys,
+                config: {
+                    preferredCompressionAlgorithm: openpgp.enums.compression.zlib,
+                    showComment: true,
+                    commentString: 'Sent with Secure Mail Client',
+                    showVersion: true
+                }
             };
+            // Don't handle multipart in the PGP service anymore
+            // We'll extract the public key after encryption and pass it to the OAuthService
+            if (attachPublicKey && keyPair && keyPair.publicKey) {
+                console.log('[PGPService] Public key will be attached to email');
+                // We will attach the public key at the email level, not in the PGP message
+            }
             // Add signing if enabled and we have a default key
             if (sign) {
                 const keyPair = this.getDefaultKeyPair();
@@ -175,27 +204,25 @@ class PGPService {
                         });
                         // Add signing key to encryption options
                         encryptOptions.signingKeys = privateKey;
-                        console.log('Message will be signed with key:', keyPair.fingerprint);
+                        console.log('[PGPService] Message will be signed with key:', keyPair.fingerprint);
                     }
                     catch (signingError) {
-                        console.warn('Failed to decrypt private key for signing:', signingError);
+                        console.warn('[PGPService] Failed to decrypt private key for signing:', signingError);
                         // Continue without signing if passphrase is wrong
                     }
                 }
             }
             // Encrypt the message
             const encrypted = await openpgp.encrypt(encryptOptions);
-            // If we should attach our public key, append it
+            // If we attached our public key, log that it was done
             if (attachPublicKey) {
-                const keyPair = this.getDefaultKeyPair();
-                if (keyPair) {
-                    return encrypted + '\n\n---\nThis message was sent with Secure Mail Client. My public key is attached below:\n\n' + keyPair.publicKey;
-                }
+                console.log('[PGPService] Message encrypted with public key attachment as MIME multipart');
             }
+            // Cast the encrypted result to string - OpenPGP.js returns either a string or a stream
             return encrypted;
         }
         catch (error) {
-            console.error('Error encrypting message:', error);
+            console.error('[PGPService] Error encrypting message:', error);
             throw error;
         }
     }
@@ -256,10 +283,43 @@ class PGPService {
                         // Pass through YubiKey detection status
                         const yubiKeyDetected = typeof signResult.yubiKeyDetected !== 'undefined' ?
                             signResult.yubiKeyDetected : true;
-                        // Get the public key to include in the message
+                        // Get the public key to include in the message - first try local file
                         const publicKeyPath = path.join(this.keysDirectory, `${defaultKeyMeta.fingerprint}.public`);
-                        const publicKeyArmored = fs.existsSync(publicKeyPath) ?
-                            fs.readFileSync(publicKeyPath, 'utf8') : 'Public key file not found';
+                        let publicKeyArmored = '';
+                        if (fs.existsSync(publicKeyPath)) {
+                            // If we have a file, use that
+                            publicKeyArmored = fs.readFileSync(publicKeyPath, 'utf8');
+                            console.log('[PGPService] Using public key from local file');
+                        }
+                        else {
+                            // If we don't have a local file, try to export from GPG
+                            console.log('[PGPService] No local public key file, trying to export from GPG');
+                            try {
+                                // Using execSync for synchronous operation in this context
+                                const { execSync } = require('child_process');
+                                const stdout = execSync(`gpg --armor --export ${defaultKeyMeta.fingerprint}`, { encoding: 'utf8' });
+                                if (stdout && stdout.includes('-----BEGIN PGP PUBLIC KEY BLOCK-----')) {
+                                    publicKeyArmored = stdout;
+                                    console.log('[PGPService] Successfully exported public key from GPG');
+                                    // Save the key to our local key store for future use
+                                    try {
+                                        fs.writeFileSync(publicKeyPath, publicKeyArmored);
+                                        console.log('[PGPService] Saved GPG public key to local file');
+                                    }
+                                    catch (saveError) {
+                                        console.warn('[PGPService] Could not save GPG public key to file:', saveError);
+                                    }
+                                }
+                                else {
+                                    publicKeyArmored = 'Public key not found in GPG or local file';
+                                    console.warn('[PGPService] GPG export returned empty or invalid key');
+                                }
+                            }
+                            catch (gpgError) {
+                                console.error('[PGPService] Error exporting key from GPG:', gpgError);
+                                publicKeyArmored = 'Error retrieving public key from GPG';
+                            }
+                        }
                         // Create a fallback message with the error
                         const fallbackMessage = `${message}
 
@@ -276,6 +336,20 @@ Fingerprint: ${defaultKeyMeta.fingerprint}
 
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 ${publicKeyArmored.split('-----BEGIN PGP PUBLIC KEY BLOCK-----')[1] || 'Public key unavailable'}`;
+                        // Check if this is specifically an error about missing public key
+                        const errorLower = signResult.error ? signResult.error.toLowerCase() : '';
+                        if (errorLower.includes('failed to import yubikey signature key') ||
+                            errorLower.includes('no public key') ||
+                            errorLower.includes('gpg cannot access yubikey keys')) {
+                            return {
+                                success: false,
+                                error: 'Your YubiKey public key is not in your GPG keyring. Please import it first.',
+                                originalMessage: message,
+                                status: 'failed',
+                                yubiKeyDetected: yubiKeyDetected
+                            };
+                        }
+                        // Otherwise return a fallback message
                         return {
                             success: true, // We still consider this a success to allow sending the email
                             signedMessage: fallbackMessage,
@@ -308,10 +382,43 @@ ${publicKeyArmored.split('-----BEGIN PGP PUBLIC KEY BLOCK-----')[1] || 'Public k
                             yubiKeyDetected
                         };
                     }
-                    // Get the public key to include in the message
+                    // Get the public key to include in the message - first try local file
                     const publicKeyPath = path.join(this.keysDirectory, `${defaultKeyMeta.fingerprint}.public`);
-                    const publicKeyArmored = fs.existsSync(publicKeyPath) ?
-                        fs.readFileSync(publicKeyPath, 'utf8') : 'Public key file not found';
+                    let publicKeyArmored = '';
+                    if (fs.existsSync(publicKeyPath)) {
+                        // If we have a file, use that
+                        publicKeyArmored = fs.readFileSync(publicKeyPath, 'utf8');
+                        console.log('[PGPService] Using public key from local file');
+                    }
+                    else {
+                        // If we don't have a local file, try to export from GPG
+                        console.log('[PGPService] No local public key file, trying to export from GPG');
+                        try {
+                            // Using execSync for synchronous operation in this context
+                            const { execSync } = require('child_process');
+                            const stdout = execSync(`gpg --armor --export ${defaultKeyMeta.fingerprint}`, { encoding: 'utf8' });
+                            if (stdout && stdout.includes('-----BEGIN PGP PUBLIC KEY BLOCK-----')) {
+                                publicKeyArmored = stdout;
+                                console.log('[PGPService] Successfully exported public key from GPG');
+                                // Save the key to our local key store for future use
+                                try {
+                                    fs.writeFileSync(publicKeyPath, publicKeyArmored);
+                                    console.log('[PGPService] Saved GPG public key to local file');
+                                }
+                                catch (saveError) {
+                                    console.warn('[PGPService] Could not save GPG public key to file:', saveError);
+                                }
+                            }
+                            else {
+                                publicKeyArmored = 'Public key not found in GPG or local file';
+                                console.warn('[PGPService] GPG export returned empty or invalid key');
+                            }
+                        }
+                        catch (gpgError) {
+                            console.error('[PGPService] Error exporting key from GPG:', gpgError);
+                            publicKeyArmored = 'Error retrieving public key from GPG';
+                        }
+                    }
                     // Create a fallback message
                     const fallbackMessage = `${message}
 
@@ -328,6 +435,20 @@ Fingerprint: ${defaultKeyMeta.fingerprint}
 
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 ${publicKeyArmored.split('-----BEGIN PGP PUBLIC KEY BLOCK-----')[1] || 'Public key unavailable'}`;
+                    // Check if this is specifically an error about missing public key
+                    const errorLower = errorMsg.toLowerCase();
+                    if (errorLower.includes('failed to import yubikey signature key') ||
+                        errorLower.includes('no public key') ||
+                        errorLower.includes('gpg cannot access yubikey keys')) {
+                        return {
+                            success: false,
+                            error: 'Your YubiKey public key is not in your GPG keyring. Please import it first.',
+                            originalMessage: message,
+                            status: 'failed',
+                            yubiKeyDetected
+                        };
+                    }
+                    // Otherwise return a fallback message
                     return {
                         success: true, // We still consider this a success to allow sending the email
                         signedMessage: fallbackMessage,
@@ -382,14 +503,179 @@ ${publicKeyArmored.split('-----BEGIN PGP PUBLIC KEY BLOCK-----')[1] || 'Public k
         }
     }
     /**
-     * Decrypt a message using our private key
+     * Decrypt a message using our private key or YubiKey
      */
     async decryptMessage(encryptedMessage, passphrase) {
         try {
-            // Get our private key
+            console.log('[PGPService] Beginning message decryption');
+            // First, check if YubiKey is available and should be used
+            const { YubiKeyService } = require('./YubiKeyService');
+            const yubiKeyService = new YubiKeyService();
+            // Check for YubiKey presence
+            try {
+                const yubiKeyInfo = await yubiKeyService.detectYubiKey();
+                if (yubiKeyInfo.detected && yubiKeyInfo.pgpInfo) {
+                    console.log('[PGPService] YubiKey detected, attempting YubiKey decryption');
+                    try {
+                        // Try to decrypt with YubiKey, passing the passphrase as PIN
+                        const decryptResult = await yubiKeyService.decryptWithYubiKey(encryptedMessage, passphrase);
+                        // Check if PIN is needed
+                        if (!decryptResult.success && decryptResult.needsPin) {
+                            console.log('[PGPService] YubiKey decryption requires PIN');
+                            if (!passphrase) {
+                                throw new Error('PIN required for YubiKey decryption');
+                            }
+                            else {
+                                // We already provided a passphrase but it was rejected
+                                throw new Error('Incorrect PIN for YubiKey decryption');
+                            }
+                        }
+                        // Check for success
+                        if (decryptResult.success && decryptResult.decryptedText) {
+                            console.log('[PGPService] Successfully decrypted with YubiKey');
+                            return decryptResult.decryptedText;
+                        }
+                        else {
+                            console.warn('[PGPService] YubiKey decryption failed:', decryptResult.error);
+                            console.warn('[PGPService] Will try standard decryption methods');
+                        }
+                    }
+                    catch (yubiKeyError) {
+                        console.warn('[PGPService] Error during YubiKey decryption:', yubiKeyError);
+                        // Continue to standard decryption method
+                    }
+                }
+            }
+            catch (yubiKeyDetectionError) {
+                console.warn('[PGPService] Error detecting YubiKey:', yubiKeyDetectionError);
+                // Continue to standard decryption
+            }
+            // Get our default key information
+            const config = readConfig();
+            const keyMetadata = (config.pgpKeys || {});
+            // Find the default key from metadata
+            const defaultKeyMeta = Object.values(keyMetadata)
+                .find(key => key && key.isDefault);
+            if (!defaultKeyMeta) {
+                console.error('[PGPService] No default key found for decryption');
+                throw new Error('No default key found for decryption');
+            }
+            console.log('[PGPService] Using default key with fingerprint:', defaultKeyMeta.fingerprint);
+            // If this key is from YubiKey but we couldn't decrypt with YubiKey directly
+            if (defaultKeyMeta.fromYubiKey && !defaultKeyMeta.hasPrivateKey) {
+                // Special handling for YubiKey keys without private key material
+                console.log('[PGPService] Default key is from YubiKey but we need to try GPG');
+                // Try using GPG CLI to decrypt the message
+                try {
+                    const util = require('util');
+                    const execAsync = util.promisify(require('child_process').exec);
+                    // Write the encrypted message to a temporary file
+                    const tempDir = path.join(electron_1.app.getPath('temp'), 'secure-mail-client');
+                    if (!fs.existsSync(tempDir)) {
+                        fs.mkdirSync(tempDir, { recursive: true });
+                    }
+                    const tempEncryptedPath = path.join(tempDir, 'encrypted-message.asc');
+                    const tempDecryptedPath = path.join(tempDir, 'decrypted-message.txt');
+                    // Write encrypted message to temp file
+                    fs.writeFileSync(tempEncryptedPath, encryptedMessage);
+                    // Set up environment for PIN passing
+                    let env = { ...process.env };
+                    let pinCommand = '';
+                    // If passphrase is provided, use it as PIN
+                    if (passphrase) {
+                        // Create a secure PIN file
+                        const pinFile = path.join(tempDir, 'pin.txt');
+                        fs.writeFileSync(pinFile, passphrase, { mode: 0o600 });
+                        pinCommand = `--passphrase-file "${pinFile}" `;
+                        // Also add environment variables for PIN
+                        env.PINENTRY_USER_DATA = passphrase;
+                        env.GPG_PIN = passphrase;
+                        env.GPG_TTY = process.stdout.isTTY ? process.env.TTY : undefined;
+                    }
+                    // Try GPG decryption with the provided PIN/passphrase
+                    try {
+                        // Execute GPG with PIN support
+                        const { stdout } = await execAsync(`gpg ${pinCommand}--decrypt --batch --yes --output "${tempDecryptedPath}" "${tempEncryptedPath}"`, { env, timeout: 30000 });
+                        // Check if decryption was successful
+                        if (fs.existsSync(tempDecryptedPath)) {
+                            const decryptedText = fs.readFileSync(tempDecryptedPath, 'utf8');
+                            // Clean up temp files
+                            try {
+                                fs.unlinkSync(tempEncryptedPath);
+                                fs.unlinkSync(tempDecryptedPath);
+                                // Clean up PIN file if it exists
+                                if (passphrase) {
+                                    const pinFile = path.join(tempDir, 'pin.txt');
+                                    if (fs.existsSync(pinFile)) {
+                                        fs.unlinkSync(pinFile);
+                                    }
+                                }
+                            }
+                            catch (cleanupError) {
+                                console.warn('[PGPService] Error cleaning up temp files:', cleanupError);
+                            }
+                            console.log('[PGPService] Successfully decrypted with GPG');
+                            return decryptedText;
+                        }
+                        else {
+                            throw new Error('GPG decryption failed - no output file created');
+                        }
+                    }
+                    catch (gpgError) {
+                        console.error('[PGPService] GPG decryption error:', gpgError);
+                        // Check if the error indicates PIN issues
+                        const errorMsg = gpgError.message || '';
+                        if (errorMsg.toLowerCase().includes('pin')) {
+                            if (!passphrase) {
+                                throw new Error('PIN required for YubiKey decryption');
+                            }
+                            else {
+                                throw new Error('Incorrect PIN for YubiKey decryption');
+                            }
+                        }
+                        else if (errorMsg.toLowerCase().includes('passphrase')) {
+                            if (!passphrase) {
+                                throw new Error('Passphrase required for decryption');
+                            }
+                            else {
+                                throw new Error('Incorrect passphrase for decryption');
+                            }
+                        }
+                        else {
+                            throw new Error(`Cannot decrypt message with YubiKey: ${errorMsg}`);
+                        }
+                    }
+                    finally {
+                        // Ensure cleanup
+                        try {
+                            if (fs.existsSync(tempEncryptedPath)) {
+                                fs.unlinkSync(tempEncryptedPath);
+                            }
+                            if (fs.existsSync(tempDecryptedPath)) {
+                                fs.unlinkSync(tempDecryptedPath);
+                            }
+                            // Clean up PIN file if it exists
+                            if (passphrase) {
+                                const pinFile = path.join(tempDir, 'pin.txt');
+                                if (fs.existsSync(pinFile)) {
+                                    fs.unlinkSync(pinFile);
+                                }
+                            }
+                        }
+                        catch (finalCleanupError) {
+                            console.warn('[PGPService] Error in final cleanup:', finalCleanupError);
+                        }
+                    }
+                }
+                catch (gpgError) {
+                    console.error('[PGPService] GPG decryption setup error:', gpgError);
+                    throw new Error(`Cannot decrypt message with YubiKey: ${gpgError.message || 'Unknown error'}`);
+                }
+            }
+            // Standard OpenPGP.js decryption for keys with private key material
             const keyPair = this.getDefaultKeyPair();
             if (!keyPair) {
-                throw new Error('No default key pair found');
+                throw new Error('No default key pair with private key found');
             }
             // Parse the private key
             const privateKey = await openpgp.decryptKey({
@@ -454,14 +740,40 @@ ${publicKeyArmored.split('-----BEGIN PGP PUBLIC KEY BLOCK-----')[1] || 'Public k
         writeConfig({ ...config, pgpKeys: keyMetadata });
     }
     /**
-     * Get a public key by fingerprint
+     * Get a public key by fingerprint - synchronous version
+     * This will try to get the key from our local store first, then from GPG keyring if not found
      */
     getPublicKeyByFingerprint(fingerprint) {
         const publicKeyPath = path.join(this.keysDirectory, `${fingerprint}.public`);
-        if (!fs.existsSync(publicKeyPath)) {
-            throw new Error(`Public key not found for fingerprint: ${fingerprint}`);
+        // First try to get the key from our local store
+        if (fs.existsSync(publicKeyPath)) {
+            console.log(`[PGPService] Found local public key file for fingerprint: ${fingerprint}`);
+            return fs.readFileSync(publicKeyPath, 'utf8');
         }
-        return fs.readFileSync(publicKeyPath, 'utf8');
+        // If not in local store, try to export from GPG using synchronous operation
+        console.log(`[PGPService] No local public key file for fingerprint: ${fingerprint}, trying GPG`);
+        try {
+            // Using execSync for synchronous operation since this is used in non-async contexts
+            const { execSync } = require('child_process');
+            const stdout = execSync(`gpg --armor --export ${fingerprint}`, { encoding: 'utf8' });
+            if (stdout && stdout.includes('-----BEGIN PGP PUBLIC KEY BLOCK-----')) {
+                console.log(`[PGPService] Successfully exported key ${fingerprint} from GPG`);
+                // Save the key to our local key store for future use
+                try {
+                    fs.writeFileSync(publicKeyPath, stdout);
+                    console.log(`[PGPService] Saved GPG key ${fingerprint} to local file`);
+                }
+                catch (saveError) {
+                    console.warn(`[PGPService] Could not save GPG key ${fingerprint} to file:`, saveError);
+                }
+                return stdout;
+            }
+        }
+        catch (gpgError) {
+            console.error(`[PGPService] Error exporting key ${fingerprint} from GPG:`, gpgError);
+        }
+        // If we still don't have the key, throw an error
+        throw new Error(`Public key not found for fingerprint: ${fingerprint}`);
     }
     /**
      * Get a private key by fingerprint
@@ -512,10 +824,43 @@ ${publicKeyArmored.split('-----BEGIN PGP PUBLIC KEY BLOCK-----')[1] || 'Public k
         }
         console.log('[PGPService] Found default key:', defaultKey.fingerprint);
         const { fingerprint, email, name } = defaultKey;
-        // Check if public key file exists
+        // Check if public key file exists - use the synchronous version here
         try {
-            const publicKey = this.getPublicKeyByFingerprint(fingerprint);
-            console.log('[PGPService] Public key file found');
+            // For getDefaultKeyPair, we need to use synchronous file operations
+            // since we can't make this method async without changing many other parts
+            const publicKeyPath = path.join(this.keysDirectory, `${fingerprint}.public`);
+            let publicKey;
+            if (fs.existsSync(publicKeyPath)) {
+                publicKey = fs.readFileSync(publicKeyPath, 'utf8');
+                console.log('[PGPService] Public key file found');
+            }
+            else {
+                // Fallback: try to use execSync to get from GPG
+                try {
+                    const { execSync } = require('child_process');
+                    const stdout = execSync(`gpg --armor --export ${fingerprint}`, { encoding: 'utf8' });
+                    if (stdout && stdout.includes('-----BEGIN PGP PUBLIC KEY BLOCK-----')) {
+                        publicKey = stdout;
+                        console.log('[PGPService] Got public key from GPG for default key');
+                        // Save for future use
+                        try {
+                            fs.writeFileSync(publicKeyPath, publicKey);
+                            console.log('[PGPService] Saved GPG key to local file');
+                        }
+                        catch (saveError) {
+                            console.warn('[PGPService] Could not save GPG key to file:', saveError);
+                        }
+                    }
+                    else {
+                        console.error('[PGPService] GPG returned empty or invalid key');
+                        return null;
+                    }
+                }
+                catch (gpgError) {
+                    console.error('[PGPService] Error getting key from GPG:', gpgError);
+                    return null;
+                }
+            }
             try {
                 const privateKey = this.getPrivateKeyByFingerprint(fingerprint);
                 if (!privateKey) {

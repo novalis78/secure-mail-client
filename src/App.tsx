@@ -27,6 +27,7 @@ function App() {
   const [emails, setEmails] = useState<Mail[]>([]);
   const [isComposing, setIsComposing] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [activeSettingsTab, setActiveSettingsTab] = useState('email'); 
   const [connectionStatus, setConnectionStatus] = useState<'secure' | 'warning' | 'error'>('secure');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showContacts, setShowContacts] = useState(false);
@@ -170,12 +171,17 @@ function App() {
         isRefreshing={isRefreshing}
         onContactsClick={() => setShowContacts(true)}
         selectedEmail={!!selectedEmail}
+        onClose={() => window.electron.app.close()}
       />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar 
           activePath={activePath} 
           setActivePath={setActivePath}
           onComposeClick={handleComposeClick}
+          onPremiumClick={() => {
+            setActiveSettingsTab('premium');
+            setShowSettings(true);
+          }}
         />
         
         {/* Resizable Layout */}
@@ -260,7 +266,8 @@ function App() {
 
       <SettingsDialog 
         isOpen={showSettings} 
-        onClose={() => setShowSettings(false)} 
+        onClose={() => setShowSettings(false)}
+        initialTab={activeSettingsTab}
       />
       
       {/* Contacts View */}

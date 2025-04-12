@@ -78,7 +78,7 @@ export function PinEntryDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Ensure latest PIN value
+    // Ensure we're getting the most current PIN value from the input field
     const currentPin = inputRef.current?.value || pin;
     
     if (!currentPin.trim()) {
@@ -86,14 +86,29 @@ export function PinEntryDialog({
       return;
     }
     
+    // Log PIN details for debugging (without revealing the actual PIN)
+    console.log('Preparing to submit PIN:');
+    console.log('- PIN length:', currentPin.length);
+    console.log('- PIN contains only digits:', /^\d+$/.test(currentPin));
+    
     // Set a timeout to allow any pending input to complete
     // This helps when the user tries to type and immediately submit
     setTimeout(() => {
       // Recheck the current value
       const finalPin = inputRef.current?.value || currentPin;
-      console.log('Submitting PIN (length:', finalPin.length, ')');
-      onSubmit(finalPin);
-    }, 50);
+      
+      // More detailed logging for PIN submission
+      console.log('Submitting PIN:');
+      console.log('- Final PIN length:', finalPin.length);
+      console.log('- PIN contains only digits:', /^\d+$/.test(finalPin));
+      console.log('- PIN input value matches state:', finalPin === pin);
+      
+      // Trim the PIN to ensure no whitespace
+      const trimmedPin = finalPin.trim();
+      
+      // Send the PIN to the handler
+      onSubmit(trimmedPin);
+    }, 100); // Slightly longer timeout for better input completion
   };
 
   return (
@@ -101,16 +116,31 @@ export function PinEntryDialog({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/20 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 z-50" />
         <Dialog.Content className="fixed left-[50%] top-[50%] z-50 w-full max-w-md translate-x-[-50%] translate-y-[-50%] rounded-lg border bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]">
-          <Dialog.Title className="text-lg font-semibold text-gray-900">
+          <Dialog.Title className="text-xl font-bold text-gray-900">
             {title}
           </Dialog.Title>
-          <Dialog.Description className="mt-2 text-sm text-gray-600">
+          <Dialog.Description className="mt-2 text-sm text-gray-800">
             {message}
           </Dialog.Description>
           
+          {/* Visual indicator that this dialog is ready for PIN entry */}
+          <div className="mt-3 p-2 bg-indigo-50 border border-indigo-100 rounded-md">
+            <p className="text-xs text-indigo-600 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Enter your YubiKey PIN when the cursor is blinking
+            </p>
+          </div>
+          
           {error && (
-            <div className="mt-2 p-2 bg-red-50 border border-red-100 rounded-md">
-              <p className="text-xs text-red-600">{error}</p>
+            <div className="mt-2 p-3 bg-red-100 border border-red-300 rounded-md">
+              <p className="text-sm font-medium text-red-700 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                {error}
+              </p>
             </div>
           )}
           
@@ -119,20 +149,37 @@ export function PinEntryDialog({
               <label htmlFor="pin" className="text-sm font-medium text-gray-700">
                 PIN
               </label>
-              <input
-                ref={inputRef}
-                id="pin"
-                type="password"
-                value={pin}
-                onChange={(e) => {
-                  setPin(e.target.value);
-                  setError('');
-                }}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                placeholder="Enter your YubiKey PIN"
-                autoComplete="off"
-                autoFocus={true}
-              />
+              <div className="relative">
+                <input
+                  ref={inputRef}
+                  id="pin"
+                  type="password"
+                  value={pin}
+                  onChange={(e) => {
+                    setPin(e.target.value);
+                    setError('');
+                    // Log PIN change events to debug
+                    console.log('PIN input changed, new length:', e.target.value.length);
+                  }}
+                  onFocus={(e) => {
+                    // Set cursor to end of input on focus
+                    const length = e.target.value.length;
+                    e.target.setSelectionRange(length, length);
+                    console.log('PIN input focused explicitly by user');
+                  }}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm 
+                    focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 
+                    text-lg font-mono tracking-widest cursor-blink"
+                  placeholder="Enter your YubiKey PIN"
+                  autoComplete="off"
+                  autoFocus={true}
+                />
+                {pin.length > 0 && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm font-bold text-indigo-500">
+                    {Array(pin.length).fill('●').join(' ')} ({pin.length})
+                  </div>
+                )}
+              </div>
               {error && <p className="text-xs text-red-500">{error}</p>}
             </div>
             

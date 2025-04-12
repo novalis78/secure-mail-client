@@ -1,4 +1,4 @@
-import { Lock, Settings, Key, ShieldCheck, RefreshCw, Globe } from 'lucide-react';
+import { Lock, Settings, Key, ShieldCheck, RefreshCw, Globe, X } from 'lucide-react';
 import StatusIcon from './StatusIcon';
 import HeaderActions from './HeaderActions';
 
@@ -9,9 +9,10 @@ interface HeaderProps {
   isRefreshing?: boolean;
   onContactsClick?: () => void;
   selectedEmail?: boolean;
+  onClose?: () => void;
 }
 
-const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false, onContactsClick, selectedEmail = false }: HeaderProps) => {
+const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false, onContactsClick, selectedEmail = false, onClose }: HeaderProps) => {
   const handleAction = (action: string) => {
     // Handle different actions
     switch (action) {
@@ -142,6 +143,25 @@ const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false,
                 }}
               />
             </div>
+            
+            {onClose && (
+              <div 
+                title="Close Application" 
+                style={{ 
+                  WebkitAppRegion: 'no-drag',
+                  marginLeft: '0.5rem'
+                }}
+              >
+                <X 
+                  size={22} 
+                  className="text-gray-400 hover:text-red-400 transition-colors duration-200 cursor-pointer" 
+                  onClick={onClose}
+                  style={{ 
+                    cursor: 'pointer'
+                  }}
+                />
+              </div>
+            )}
             {selectedEmail && (
               <div style={{ WebkitAppRegion: 'no-drag' }}>
                 <HeaderActions onAction={handleAction} />

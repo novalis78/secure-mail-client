@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { 
   Lock, Key, ArrowLeft, MessageSquare, Reply, Forward, 
   FileText, Download, ArrowDownToLine, Shield, ChevronDown, 
-  Share, Star, Flag, Trash2, Printer, User, Clock
+  Share, Star, Flag, Trash2, Printer, User, Clock, Usb
 } from 'lucide-react';
 import { Mail } from '../../App';
+import { PinEntryDialog } from '../ui/pin-entry-dialog';
 
 interface MailDetailProps {
   email: Mail;
@@ -41,6 +42,87 @@ const MailDetail = ({ email }: MailDetailProps) => {
   const [showPassphraseInput, setShowPassphraseInput] = useState(false);
   const [isUsingYubiKey, setIsUsingYubiKey] = useState(false);
   const [yubiKeyStatus, setYubiKeyStatus] = useState<'detecting' | 'detected' | 'not_detected' | null>(null);
+  
+  // PIN dialog state
+  const [showPinDialog, setShowPinDialog] = useState(false);
+  const [pinDialogError, setPinDialogError] = useState<string | undefined>(undefined);
+
+  // Handle PIN submission
+  const handlePinSubmit = async (pin: string) => {
+    setShowPinDialog(false);
+    setPinDialogError(undefined);
+    
+    // Check all possible content fields before giving up
+    const emailContent = email.text || email.body || email.html;
+    if (!emailContent) {
+      setDecryptionError('No encrypted content available');
+      return;
+    }
+
+    // Extract PGP message with our robust extraction function
+    const pgpMessage = extractPGPMessage(emailContent);
+    
+    if (!pgpMessage) {
+      setDecryptionError('No valid PGP message found in content');
+      return;
+    }
+    
+    setIsDecrypting(true);
+    setDecryptionError(null);
+    
+    // Start progress animation
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+      progress += 5;
+      if (progress <= 90) {
+        setDecryptProgress(progress);
+      }
+    }, 100);
+    
+    try {
+      const result = await window.electron.pgp.decryptMessage({
+        encryptedMessage: pgpMessage,
+        passphrase: pin
+      });
+      
+      if (result.success && result.decryptedMessage) {
+        setDecryptProgress(100);
+        setTimeout(() => {
+          setIsDecrypting(false);
+          setIsDecrypted(true);
+          setDecryptedContent(result.decryptedMessage || null);
+        }, 200);
+      } else {
+        // Check if this was a PIN-related error
+        if (result.error && (
+          result.error.includes('PIN') || 
+          result.error.includes('pin') || 
+          result.error.includes('incorrect')
+        )) {
+          setPinDialogError(result.error);
+          setShowPinDialog(true);
+        } else {
+          setDecryptionError(result.error || 'Failed to decrypt message');
+        }
+        setIsDecrypting(false);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      
+      // Check if this was a PIN-related error
+      if (errorMsg.includes('PIN') || 
+          errorMsg.includes('pin') || 
+          errorMsg.includes('incorrect')) {
+        setPinDialogError(errorMsg);
+        setShowPinDialog(true);
+      } else {
+        setDecryptionError(errorMsg);
+      }
+      setIsDecrypting(false);
+    } finally {
+      clearInterval(progressInterval);
+    }
+  };
 
   // Handle decryption with YubiKey
   const handleYubiKeyDecrypt = async () => {
@@ -66,17 +148,7 @@ const MailDetail = ({ email }: MailDetailProps) => {
     
     setIsUsingYubiKey(true);
     setYubiKeyStatus('detecting');
-    setIsDecrypting(true);
     setDecryptionError(null);
-    
-    // Start progress animation
-    let progress = 0;
-    const progressInterval = setInterval(() => {
-      progress += 2;
-      if (progress <= 90) {
-        setDecryptProgress(progress);
-      }
-    }, 100);
     
     try {
       // First detect the YubiKey
@@ -88,35 +160,13 @@ const MailDetail = ({ email }: MailDetailProps) => {
       
       setYubiKeyStatus('detected');
       
-      // In the real implementation, we would use the YubiKey to decrypt
-      // For now, we simulate decryption
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Show PIN dialog for YubiKey
+      setShowPinDialog(true);
       
-      // Then decrypt using PGP (in a real implementation, this would use the YubiKey)
-      const result = await window.electron.pgp.decryptMessage({
-        encryptedMessage: pgpMessage,
-        passphrase: 'yubikey-provided-passphrase' // This would be handled differently with actual YubiKey
-      });
-      
-      if (result.success && result.decryptedMessage) {
-        setDecryptProgress(100);
-        setTimeout(() => {
-          setIsDecrypting(false);
-          setIsDecrypted(true);
-          setDecryptedContent(result.decryptedMessage || null);
-          setIsUsingYubiKey(false);
-          setYubiKeyStatus(null);
-        }, 200);
-      } else {
-        throw new Error(result.error || 'Failed to decrypt message with YubiKey');
-      }
     } catch (error) {
-      setDecryptionError(error instanceof Error ? error.message : 'An unknown error occurred during YubiKey decryption');
-      setIsDecrypting(false);
+      setDecryptionError(error instanceof Error ? error.message : 'An unknown error occurred during YubiKey detection');
       setIsUsingYubiKey(false);
       setYubiKeyStatus('not_detected');
-    } finally {
-      clearInterval(progressInterval);
     }
   };
 
@@ -230,13 +280,8 @@ const MailDetail = ({ email }: MailDetailProps) => {
       return;
     }
 
-    // If no passphrase provided, we need to ask for it
-    if (!passphrase) {
-      setShowPassphraseInput(true);
-      return;
-    }
-    
-    setShowPassphraseInput(false);
+    // If no passphrase provided, try with empty string first
+    // This will allow us to detect interactive YubiKey PIN requests
     setIsDecrypting(true);
     setDecryptionError(null);
     
@@ -250,9 +295,10 @@ const MailDetail = ({ email }: MailDetailProps) => {
     }, 100);
     
     try {
+      // First try without a passphrase - this might trigger YubiKey PIN prompt
       const result = await window.electron.pgp.decryptMessage({
         encryptedMessage: pgpMessage,
-        passphrase: passphrase
+        passphrase: passphrase || '' // Use empty string if no passphrase
       });
       
       if (result.success && result.decryptedMessage) {
@@ -263,11 +309,45 @@ const MailDetail = ({ email }: MailDetailProps) => {
           setDecryptedContent(result.decryptedMessage || null);
         }, 200);
       } else {
-        setDecryptionError(result.error || 'Failed to decrypt message');
+        // Check if we need a PIN for YubiKey operations
+        if (result.error && (
+          result.error.includes('PIN required') || 
+          result.error.includes('Inappropriate ioctl') ||
+          result.error.includes('interactive PIN prompt')
+        )) {
+          console.log('PIN needed for YubiKey decryption');
+          setShowPinDialog(true);
+        } 
+        // Check if we need a passphrase (for regular PGP)
+        else if (!passphrase || result.error && result.error.includes('passphrase')) {
+          console.log('Regular passphrase needed');
+          setShowPassphraseInput(true);
+        } 
+        // Other errors
+        else {
+          setDecryptionError(result.error || 'Failed to decrypt message');
+        }
         setIsDecrypting(false);
       }
     } catch (error) {
-      setDecryptionError(error instanceof Error ? error.message : 'An unknown error occurred during decryption');
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      
+      // Check if PIN is needed
+      if (errorMsg.includes('PIN required') || 
+          errorMsg.includes('Inappropriate ioctl') ||
+          errorMsg.includes('interactive PIN prompt')) {
+        console.log('PIN needed due to error');
+        setShowPinDialog(true);
+      } 
+      // Check if regular passphrase is needed
+      else if (!passphrase || errorMsg.includes('passphrase')) {
+        console.log('Regular passphrase needed due to error');
+        setShowPassphraseInput(true);
+      } 
+      // Other errors
+      else {
+        setDecryptionError(errorMsg);
+      }
       setIsDecrypting(false);
     } finally {
       clearInterval(progressInterval);
@@ -448,12 +528,14 @@ const MailDetail = ({ email }: MailDetailProps) => {
           {/* Encrypted Message Header */}
           <div className="bg-base-dark border-b border-border-dark p-4 flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Lock className="text-accent-green" size={16} />
-              <span className="text-accent-green font-mono text-sm font-medium">PGP ENCRYPTED MESSAGE</span>
+              <div className="bg-accent-green rounded-full p-1">
+                <Lock className="text-white" size={12} />
+              </div>
+              <span className="text-white bg-accent-green px-2 py-0.5 rounded font-mono text-sm font-medium">PGP ENCRYPTED MESSAGE</span>
             </div>
             {isDecrypted && (
-              <div className="flex items-center space-x-2 text-accent-green">
-                <div className="px-2 py-0.5 bg-accent-green/10 rounded text-xs">Decrypted</div>
+              <div className="flex items-center space-x-2">
+                <div className="px-2 py-0.5 bg-accent-green rounded text-white text-xs">Decrypted</div>
               </div>
             )}
           </div>
@@ -501,8 +583,8 @@ const MailDetail = ({ email }: MailDetailProps) => {
                   {/* Security info with details */}
                   <div className="bg-base-dark border border-border-dark rounded-lg p-2.5 flex justify-between items-center">
                     <div className="flex items-center space-x-3">
-                      <div className="bg-accent-green/10 p-1.5 rounded-full">
-                        <Shield className="h-4 w-4 text-accent-green" />
+                      <div className="bg-accent-green p-1.5 rounded-full">
+                        <Shield className="h-4 w-4 text-white" />
                       </div>
                       <div>
                         <div className="text-xs font-medium text-gray-300">
@@ -519,14 +601,14 @@ const MailDetail = ({ email }: MailDetailProps) => {
                     
                     <div className="flex items-center">
                       {isUsingYubiKey || yubiKeyStatus === 'detected' ? (
-                        <div className="bg-accent-green/10 text-accent-green text-xs px-2 py-1 rounded-full flex items-center">
+                        <div className="bg-accent-green text-white text-xs px-2 py-1 rounded-full flex items-center">
                           <svg className="w-3 h-3 mr-1" viewBox="0 0 512 512" fill="currentColor">
                             <path d="M256 48C141.31 48 48 141.31 48 256s93.31 208 208 208 208-93.31 208-208S370.69 48 256 48zm-50.69 295.38v-58.75l-43.41 43.41c-6.11 6.11-16.01 6.11-22.12 0-6.11-6.11-6.11-16.01 0-22.12l43.41-43.41H124.9c-8.63 0-15.63-7-15.63-15.63 0-8.63 7-15.63 15.63-15.63h58.28l-43.41-43.41c-6.11-6.11-6.11-16.01 0-22.12 6.11-6.11 16.01-6.11 22.12 0l43.41 43.41v-58.28c0-8.63 7-15.63 15.63-15.63 8.63 0 15.63 7 15.63 15.63v58.28l43.41-43.41c6.11-6.11 16.01-6.11 22.12 0 6.11 6.11 6.11 16.01 0 22.12l-43.41 43.41h58.28c8.63 0 15.63 7 15.63 15.63 0 8.63-7 15.63-15.63 15.63h-58.28l43.41 43.41c6.11 6.11 6.11 16.01 0 22.12-6.11 6.11-16.01 6.11-22.12 0l-43.41-43.41v58.31c0 8.63-7 15.63-15.63 15.63-8.63-.01-15.63-7.01-15.63-15.64z"/>
                           </svg>
                           YubiKey Verified
                         </div>
                       ) : (
-                        <div className="bg-accent-green/10 text-accent-green text-xs px-2 py-1 rounded-full flex items-center">
+                        <div className="bg-accent-green text-white text-xs px-2 py-1 rounded-full flex items-center">
                           <Key size={10} className="mr-1" />
                           PGP Protected
                         </div>
@@ -534,20 +616,20 @@ const MailDetail = ({ email }: MailDetailProps) => {
                     </div>
                   </div>
                   
-                  {/* Actions bar */}
+                  {/* Actions bar - simplified */}
                   <div className="flex justify-end space-x-2 text-xs">
-                    <button className="bg-secondary-dark hover:bg-secondary-dark/80 text-gray-400 hover:text-gray-300 px-3 py-1.5 rounded-md transition-colors flex items-center">
-                      <FileText size={12} className="mr-1.5" />
-                      View PGP details
-                    </button>
-                    <button className="bg-secondary-dark hover:bg-secondary-dark/80 text-gray-400 hover:text-gray-300 px-3 py-1.5 rounded-md transition-colors flex items-center">
+                    <button className="bg-accent-green text-white px-3 py-1.5 rounded-md hover:bg-accent-green/90 transition-colors flex items-center">
                       <Reply size={12} className="mr-1.5" />
-                      Reply Encrypted
+                      Reply Securely
                     </button>
-                    <button className="bg-secondary-dark hover:bg-secondary-dark/80 text-gray-400 hover:text-gray-300 px-3 py-1.5 rounded-md transition-colors flex items-center">
-                      <Download size={12} className="mr-1.5" />
-                      Save Message
-                    </button>
+                    <div className="relative group">
+                      <button className="bg-secondary-dark hover:bg-secondary-dark/80 text-gray-300 px-3 py-1.5 rounded-md transition-colors flex items-center">
+                        <svg className="w-3 h-3 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                        </svg>
+                        More Actions
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -612,7 +694,7 @@ const MailDetail = ({ email }: MailDetailProps) => {
                         <button
                           onClick={handleDecrypt}
                           disabled={!passphrase}
-                          className={`flex items-center space-x-2 bg-gradient-to-r from-accent-green to-accent-green/90 text-white px-5 py-2.5 rounded-lg hover:from-accent-green/90 hover:to-accent-green/80 transition-all duration-200 shadow ${
+                          className={`flex items-center space-x-2 bg-accent-green text-white px-5 py-2.5 rounded-lg hover:bg-accent-green/90 transition-all duration-200 shadow ${
                             !passphrase ? 'opacity-50 cursor-not-allowed' : 'shadow-accent-green/20'
                           }`}
                         >
@@ -742,13 +824,13 @@ const MailDetail = ({ email }: MailDetailProps) => {
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         onClick={handleDecrypt}
-                        className="flex flex-col items-center justify-center space-y-2 bg-gradient-to-b from-accent-green/80 to-accent-green py-4 rounded-lg hover:from-accent-green hover:to-accent-green/90 transition-all duration-200 shadow-lg shadow-accent-green/20"
+                        className="flex flex-col items-center justify-center space-y-2 bg-accent-green py-4 rounded-lg hover:bg-accent-green/90 transition-all duration-200 shadow-lg shadow-accent-green/20 text-white"
                       >
                         <div className="bg-white/20 p-2 rounded-full">
                           <Key size={20} className="text-white" />
                         </div>
-                        <span className="font-medium text-white text-sm">Passphrase</span>
-                        <span className="text-white/70 text-xs">Use private key password</span>
+                        <span className="font-medium text-white text-sm tracking-wider">PASSPHRASE</span>
+                        <span className="text-white text-xs">Use private key password</span>
                       </button>
                       
                       <button
@@ -760,8 +842,8 @@ const MailDetail = ({ email }: MailDetailProps) => {
                             <path d="M256 48C141.31 48 48 141.31 48 256s93.31 208 208 208 208-93.31 208-208S370.69 48 256 48zm-50.69 295.38v-58.75l-43.41 43.41c-6.11 6.11-16.01 6.11-22.12 0-6.11-6.11-6.11-16.01 0-22.12l43.41-43.41H124.9c-8.63 0-15.63-7-15.63-15.63 0-8.63 7-15.63 15.63-15.63h58.28l-43.41-43.41c-6.11-6.11-6.11-16.01 0-22.12 6.11-6.11 16.01-6.11 22.12 0l43.41 43.41v-58.28c0-8.63 7-15.63 15.63-15.63 8.63 0 15.63 7 15.63 15.63v58.28l43.41-43.41c6.11-6.11 16.01-6.11 22.12 0 6.11 6.11 6.11 16.01 0 22.12l-43.41 43.41h58.28c8.63 0 15.63 7 15.63 15.63 0 8.63-7 15.63-15.63 15.63h-58.28l43.41 43.41c6.11 6.11 6.11 16.01 0 22.12-6.11 6.11-16.01 6.11-22.12 0l-43.41-43.41v58.31c0 8.63-7 15.63-15.63 15.63-8.63-.01-15.63-7.01-15.63-15.64z"/>
                           </svg>
                         </div>
-                        <span className="font-medium text-accent-green text-sm">YubiKey</span>
-                        <span className="text-gray-400 text-xs">Hardware security key</span>
+                        <span className="font-medium text-accent-green text-sm tracking-wider">YUBIKEY</span>
+                        <span className="text-accent-green text-xs">Hardware security key</span>
                       </button>
                     </div>
                     <div className="text-center text-xs text-gray-500 mt-1">
@@ -785,6 +867,20 @@ const MailDetail = ({ email }: MailDetailProps) => {
 
   return (
     <div className="h-full flex flex-col bg-base-dark overflow-y-auto w-full">
+      {/* YubiKey PIN Dialog */}
+      <PinEntryDialog 
+        isOpen={showPinDialog}
+        onClose={() => {
+          setShowPinDialog(false);
+          setPinDialogError(undefined);
+          setIsUsingYubiKey(false);
+          setYubiKeyStatus(null);
+        }}
+        onSubmit={handlePinSubmit}
+        title="YubiKey PIN Required"
+        message="Please enter your YubiKey PIN to decrypt this message"
+        errorMessage={pinDialogError}
+      />
       {/* Email Header with Subject and Security Status */}
       <div className="px-6 py-4 border-b border-border-dark flex flex-wrap justify-between items-center sticky top-0 bg-base-dark z-10">
         <div className="flex items-center mr-4 mb-2 sm:mb-0">
@@ -875,13 +971,9 @@ const MailDetail = ({ email }: MailDetailProps) => {
           <div className="flex flex-shrink-0">
             {isDecrypted ? (
               <div className="flex space-x-3">
-                <button className="flex items-center text-xs border border-accent-green/30 bg-accent-green/10 px-2.5 py-1.5 rounded-md hover:bg-accent-green/20 transition-colors">
-                  <FileText size={12} className="mr-1.5" />
-                  <span className="whitespace-nowrap">Encryption details</span>
-                </button>
-                <button className="flex items-center text-xs border border-accent-green/30 bg-accent-green/10 px-2.5 py-1.5 rounded-md hover:bg-accent-green/20 transition-colors">
+                <button className="flex items-center text-xs border border-accent-green/30 bg-accent-green text-white px-2.5 py-1.5 rounded-md hover:bg-accent-green/90 transition-colors shadow-sm">
                   <Shield size={12} className="mr-1.5" />
-                  <span className="whitespace-nowrap">Verify signature</span>
+                  <span className="whitespace-nowrap">Verified & Secure</span>
                 </button>
               </div>
             ) : (

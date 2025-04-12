@@ -11,6 +11,9 @@ electron_1.contextBridge.exposeInMainWorld('electron', {
             electron_1.ipcRenderer.on(channel, (_, ...args) => func(...args));
         }
     },
+    app: {
+        close: () => electron_1.ipcRenderer.invoke('app:close')
+    },
     imap: {
         connect: (config) => electron_1.ipcRenderer.invoke('imap:connect', config),
         fetchEmails: () => electron_1.ipcRenderer.invoke('imap:fetch-emails'),
@@ -67,7 +70,19 @@ electron_1.contextBridge.exposeInMainWorld('electron', {
         hasPGPKeys: () => electron_1.ipcRenderer.invoke('yubikey:has-pgp-keys'),
         getPGPFingerprints: () => electron_1.ipcRenderer.invoke('yubikey:get-pgp-fingerprints'),
         exportPublicKeys: () => electron_1.ipcRenderer.invoke('yubikey:export-public-keys'),
-        importToPGP: () => electron_1.ipcRenderer.invoke('yubikey:import-to-pgp')
+        importToPGP: () => electron_1.ipcRenderer.invoke('yubikey:import-to-pgp'),
+        importToGPG: () => electron_1.ipcRenderer.invoke('yubikey:import-to-gpg'),
+        // YubiKey Manager functions
+        checkPublicKey: (fingerprint) => electron_1.ipcRenderer.invoke('yubikey:check-public-key', fingerprint),
+        importPublicKeyFromKeyserver: (fingerprint) => electron_1.ipcRenderer.invoke('yubikey:import-from-keyserver', fingerprint),
+        importPublicKeyFromFile: () => electron_1.ipcRenderer.invoke('yubikey:import-from-file'),
+        exportPublicKeyToFile: (fingerprint) => electron_1.ipcRenderer.invoke('yubikey:export-to-file', fingerprint),
+        uploadPublicKeyToKeyserver: (fingerprint) => electron_1.ipcRenderer.invoke('yubikey:upload-to-keyserver', fingerprint),
+        // New YubiKey URL functions
+        hasPublicKeyURL: () => electron_1.ipcRenderer.invoke('yubikey:has-public-key-url'),
+        getPublicKeyURL: () => electron_1.ipcRenderer.invoke('yubikey:get-public-key-url'),
+        importPublicKeyFromCardURL: () => electron_1.ipcRenderer.invoke('yubikey:import-from-card-url'),
+        testYubiKeyFunctions: () => electron_1.ipcRenderer.invoke('yubikey:test-functions')
     },
     credentials: {
         saveGmail: (params) => electron_1.ipcRenderer.invoke('credentials:save-gmail', params),
@@ -75,6 +90,16 @@ electron_1.contextBridge.exposeInMainWorld('electron', {
         saveImap: (credentials) => electron_1.ipcRenderer.invoke('credentials:save-imap', credentials),
         getImap: () => electron_1.ipcRenderer.invoke('credentials:get-imap'),
         clear: () => electron_1.ipcRenderer.invoke('credentials:clear')
+    },
+    premium: {
+        getStatus: () => electron_1.ipcRenderer.invoke('premium:get-status'),
+        getBitcoinAddress: (params) => electron_1.ipcRenderer.invoke('premium:get-bitcoin-address', params),
+        checkPayment: (params) => electron_1.ipcRenderer.invoke('premium:check-payment', params),
+        // XPUB key management
+        setXpub: (params) => electron_1.ipcRenderer.invoke('premium:set-xpub', params),
+        getXpub: () => electron_1.ipcRenderer.invoke('premium:get-xpub'),
+        // Development only - would be removed in production
+        setStatus: (params) => electron_1.ipcRenderer.invoke('premium:set-status', params)
     }
 });
 //# sourceMappingURL=preload.js.map

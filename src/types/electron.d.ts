@@ -406,6 +406,10 @@ export interface PremiumAPI {
   }>;
 }
 
+interface AppAPI {
+  close: () => Promise<{ success: boolean }>;
+}
+
 declare global {
   interface Window {
     electron: {
@@ -416,6 +420,7 @@ declare global {
       credentials: CredentialsAPI;
       oauth: OAuthAPI;
       premium: PremiumAPI;
+      app: AppAPI;
     };
   }
 }

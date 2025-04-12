@@ -58,6 +58,7 @@ export class YubiKeyService {
   /**
    * Detect if a YubiKey is connected and return its information
    * This method is more aggressive about detecting YubiKey removal
+   * and uses multiple detection methods for reliability
    */
   async detectYubiKey(): Promise<YubiKeyInfo> {
     try {
@@ -66,25 +67,124 @@ export class YubiKeyService {
       // Clear any cached data to ensure fresh detection
       this.yubiKeyInfo = null;
       
-      // First check if ykman is installed
+      // Use multiple detection methods for better reliability
+      let yubiKeyDetected = false;
+      let basicInfo: YubiKeyInfo = { detected: false };
+      
+      // Method 1: Check using ykman if installed
       try {
         await this.checkYkmanInstalled();
-      } catch (error) {
-        console.warn('[YubiKeyService] YubiKey Manager (ykman) not installed:', error);
-        return { detected: false };
+        // Get basic YubiKey info with short timeout
+        basicInfo = await this.getBasicYubiKeyInfo();
+        yubiKeyDetected = basicInfo.detected;
+      } catch (ykmanError) {
+        console.warn('[YubiKeyService] YubiKey Manager (ykman) detection failed:', ykmanError);
+        // Continue to other detection methods
       }
       
-      // Get basic YubiKey info with short timeout to detect disconnection quickly
-      const basicInfo = await this.getBasicYubiKeyInfo();
+      // Method 2: If ykman failed, try direct GPG card-status
+      if (!yubiKeyDetected) {
+        console.log('[YubiKeyService] Trying GPG card-status for YubiKey detection');
+        try {
+          const { stdout: cardStatus } = await execAsync('gpg --card-status', { timeout: 3000 });
+          
+          // Check if output contains YubiKey/OpenPGP card indicators
+          if (cardStatus.includes('OpenPGP') || 
+              cardStatus.includes('Yubikey') || 
+              cardStatus.includes('YubiKey') || 
+              cardStatus.includes('Serial number:')) {
+            console.log('[YubiKeyService] YubiKey detected via GPG card-status');
+            yubiKeyDetected = true;
+            basicInfo = { 
+              detected: true,
+              version: 'Unknown (detected via GPG)',
+              formFactor: 'Unknown',
+              interfaces: ['GPG SmartCard'] 
+            };
+          }
+        } catch (gpgError) {
+          console.warn('[YubiKeyService] GPG card-status detection failed:', gpgError);
+        }
+      }
       
-      // If YubiKey is not detected, immediately return that info
-      if (!basicInfo.detected) {
-        console.log('[YubiKeyService] No YubiKey detected');
+      // Method 3: Try low-level USB detection
+      if (!yubiKeyDetected) {
+        console.log('[YubiKeyService] Trying basic system commands for YubiKey detection');
+        try {
+          let devicePresent = false;
+          
+          // Try different system commands based on platform
+          if (this.platform === 'darwin' || this.platform === 'linux') {
+            // On macOS/Linux, try using lsusb or system_profiler
+            if (this.platform === 'darwin') {
+              try {
+                const { stdout: systemProfiler } = await execAsync('system_profiler SPUSBDataType', { timeout: 3000 });
+                devicePresent = systemProfiler.includes('Yubico') || 
+                               systemProfiler.includes('YubiKey') || 
+                               systemProfiler.includes('CCID');
+              } catch (spError) {
+                console.warn('[YubiKeyService] system_profiler failed:', spError);
+              }
+            } else {
+              try {
+                const { stdout: lsusb } = await execAsync('lsusb', { timeout: 3000 });
+                devicePresent = lsusb.includes('Yubico') || 
+                               lsusb.includes('YubiKey') || 
+                               lsusb.includes('CCID');
+              } catch (lsusbError) {
+                console.warn('[YubiKeyService] lsusb failed:', lsusbError);
+              }
+            }
+          } else if (this.platform === 'win32') {
+            // On Windows, try using powershell to get PnP devices
+            try {
+              const { stdout: pnpDevices } = await execAsync(
+                'powershell.exe -Command "Get-PnpDevice | Select-Object -Property FriendlyName | ConvertTo-Json"', 
+                { timeout: 3000 }
+              );
+              
+              devicePresent = pnpDevices.includes('Yubico') || 
+                             pnpDevices.includes('YubiKey') || 
+                             pnpDevices.includes('Smart Card');
+            } catch (pnpError) {
+              console.warn('[YubiKeyService] Windows PnP detection failed:', pnpError);
+            }
+          }
+          
+          if (devicePresent) {
+            console.log('[YubiKeyService] YubiKey detected via system device enumeration');
+            yubiKeyDetected = true;
+            basicInfo = { 
+              detected: true,
+              version: 'Unknown (detected via system)',
+              formFactor: 'USB Device',
+              interfaces: ['System Detected'] 
+            };
+          }
+        } catch (systemError) {
+          console.warn('[YubiKeyService] System-level detection failed:', systemError);
+        }
+      }
+      
+      // If YubiKey is not detected by any method, return that info
+      if (!yubiKeyDetected) {
+        console.log('[YubiKeyService] No YubiKey detected by any method');
         return { detected: false };
       }
       
       // If YubiKey detected, get OpenPGP info
-      const pgpInfo = await this.getOpenPGPInfo();
+      let pgpInfo;
+      try {
+        pgpInfo = await this.getOpenPGPInfo();
+      } catch (pgpError) {
+        console.warn('[YubiKeyService] Error getting OpenPGP info:', pgpError);
+        // Create minimal PGP info to indicate YubiKey is present but PGP info unavailable
+        pgpInfo = {
+          versionPGP: "Unknown",
+          versionApp: "Not accessible",
+        };
+      }
+      
       const result = {
         ...basicInfo,
         pgpInfo
@@ -627,21 +727,50 @@ echo "YubiKey keys successfully imported to GPG"
         fs.writeFileSync(dataFile, data);
         
         // Find the correct path to our signing script by checking multiple possible locations
-        let scriptPath = path.join(app.getAppPath(), 'scripts', 'yubikey-sign.sh');
+        // Use an array of possible locations for more robust detection
+        const possibleLocations = [
+          // Original project location
+          path.join(app.getAppPath(), 'scripts', 'yubikey-sign.sh'),
+          // Dist location
+          path.join(app.getAppPath(), 'dist', 'scripts', 'yubikey-sign.sh'),
+          // Dist-electron location
+          path.join(app.getAppPath(), 'dist-electron', 'scripts', 'yubikey-sign.sh'),
+          // Root project location (for development)
+          path.join(process.cwd(), 'scripts', 'yubikey-sign.sh'),
+          // Absolute path from current file location
+          path.join(__dirname, '..', '..', '..', 'scripts', 'yubikey-sign.sh'),
+          // Absolute path from app directory
+          path.join(app.getPath('userData'), 'scripts', 'yubikey-sign.sh')
+        ];
         
-        // Check for script in multiple locations
-        if (!fs.existsSync(scriptPath)) {
-          const altScriptPath = path.join(app.getAppPath(), 'dist', 'scripts', 'yubikey-sign.sh');
-          if (fs.existsSync(altScriptPath)) {
-            console.log('[YubiKeyService] Found YubiKey script in alternate location:', altScriptPath);
-            scriptPath = altScriptPath;
-          } else {
-            // One more fallback location
-            const distElectronPath = path.join(app.getAppPath(), 'dist-electron', 'scripts', 'yubikey-sign.sh');
-            if (fs.existsSync(distElectronPath)) {
-              console.log('[YubiKeyService] Found YubiKey script in dist-electron location:', distElectronPath);
-              scriptPath = distElectronPath;
+        let scriptPath = '';
+        for (const location of possibleLocations) {
+          if (fs.existsSync(location)) {
+            console.log('[YubiKeyService] Found YubiKey script at:', location);
+            scriptPath = location;
+            break;
+          }
+        }
+        
+        // If no script found in predefined locations, copy it to userData and use that
+        if (!scriptPath) {
+          console.log('[YubiKeyService] Script not found in predefined locations, copying to userData');
+          
+          // First check for script in current directory
+          const sourceScript = path.join(__dirname, 'yubikey-sign.sh');
+          if (fs.existsSync(sourceScript)) {
+            // Create scripts directory in userData if it doesn't exist
+            const userDataScriptsDir = path.join(app.getPath('userData'), 'scripts');
+            if (!fs.existsSync(userDataScriptsDir)) {
+              fs.mkdirSync(userDataScriptsDir, { recursive: true });
             }
+            
+            const userDataScript = path.join(userDataScriptsDir, 'yubikey-sign.sh');
+            fs.copyFileSync(sourceScript, userDataScript);
+            fs.chmodSync(userDataScript, 0o755); // Make executable
+            
+            scriptPath = userDataScript;
+            console.log('[YubiKeyService] Copied script to:', scriptPath);
           }
         }
         
@@ -671,42 +800,71 @@ echo "YubiKey keys successfully imported to GPG"
           // Replace the pin with normalized version
           pin = normalizedPin;
           
-          // If PIN provided, create a pin entry program that returns the PIN
-          const pinEntryScript = path.join(tempDir, 'pinentry-script.sh');
-          fs.writeFileSync(pinEntryScript, `#!/bin/bash
-# Improved PIN entry script with better logging
-echo "[pinentry] Starting PIN entry script" >&2
-echo "OK Pleased to meet you"
-while read cmd; do
-  echo "[pinentry] Received command: $cmd" >&2
-  case "$cmd" in
-    GETPIN)
-      echo "[pinentry] Providing PIN (length: ${pin.length})" >&2
-      echo "D ${pin}"
-      echo "OK"
-      ;;
-    *)
-      echo "[pinentry] Handling other command: $cmd" >&2
-      echo "OK"
-      ;;
-  esac
-done
-`, { mode: 0o755 });
-          
-          // Set environment variable to use our custom pinentry program
+          // Create a more reliable PIN passing method
+          // Option 1: Using environment variables
           const env = {
             ...process.env,
             PINENTRY_USER_DATA: pin, // Custom environment variable to pass PIN
             GPG_PIN: pin, // Additional environment variable for PIN
             GPG_TTY: process.stdout.isTTY ? process.env.TTY : undefined, // TTY for pinentry
-            GNUPGHOME: tempDir // Use a temporary GPG home directory
           };
           
-          // Execute the signing script with the environment
-          result = await execAsync(`"${scriptPath}" "${dataFile}" "${outputFile}"`, { env });
+          console.log('[YubiKeyService] Executing script with PIN environment variables');
+          
+          try {
+            // Execute the script with pin in environment variables
+            result = await execAsync(`"${scriptPath}" "${dataFile}" "${outputFile}"`, { 
+              env,
+              timeout: 30000 // 30 second timeout
+            });
+            console.log('[YubiKeyService] Script execution completed with PIN environment variables');
+          } catch (execError) {
+            console.error('[YubiKeyService] Error executing script with PIN environment:', execError);
+            
+            // Fallback to writing pin directly to tempfile if the script failed
+            console.log('[YubiKeyService] Falling back to direct PIN file method');
+            
+            // Write PIN to a temp file that the script can read
+            const pinFile = path.join(tempDir, 'pin.txt');
+            fs.writeFileSync(pinFile, pin, { mode: 0o600 }); // Secure file permissions
+            
+            // Execute with PIN_FILE environment variable
+            try {
+              const pinFileEnv = {
+                ...process.env,
+                PIN_FILE: pinFile
+              };
+              
+              result = await execAsync(`"${scriptPath}" "${dataFile}" "${outputFile}"`, { 
+                env: pinFileEnv,
+                timeout: 30000 // 30 second timeout
+              });
+              console.log('[YubiKeyService] Script execution completed with PIN file');
+              
+              // Secure cleanup
+              try {
+                fs.unlinkSync(pinFile);
+              } catch (cleanupError) {
+                console.warn('[YubiKeyService] Error cleaning up PIN file:', cleanupError);
+              }
+            } catch (pinFileError) {
+              // Both methods failed, return the original error
+              console.error('[YubiKeyService] Both PIN methods failed:', pinFileError);
+              throw execError; // Throw original error
+            }
+          }
         } else {
           // No PIN provided, just run the script normally
-          result = await execAsync(`"${scriptPath}" "${dataFile}" "${outputFile}"`);
+          console.log('[YubiKeyService] Executing script without PIN');
+          try {
+            result = await execAsync(`"${scriptPath}" "${dataFile}" "${outputFile}"`, {
+              timeout: 30000 // 30 second timeout
+            });
+            console.log('[YubiKeyService] Script execution completed without PIN');
+          } catch (noPinError) {
+            console.error('[YubiKeyService] Error executing script without PIN:', noPinError);
+            throw noPinError;
+          }
         }
         
         if (!fs.existsSync(outputFile)) {
@@ -773,7 +931,15 @@ done
         // Check for common error indicators in the output
         const lowerSignedData = signedData.toLowerCase();
         
-        if (lowerSignedData.includes('bad pin') || 
+        if (lowerSignedData.includes('pin blocked') || signedData.includes('PIN blocked')) {
+          console.error('[YubiKeyService] YubiKey PIN is blocked');
+          return {
+            success: false,
+            needsPin: false, // Don't prompt for PIN since it's blocked
+            error: 'YubiKey PIN is blocked. You need to reset it using the YubiKey Manager (ykman) application.',
+            yubiKeyDetected: true
+          };
+        } else if (lowerSignedData.includes('bad pin') || 
             lowerSignedData.includes('incorrect pin') || 
             lowerSignedData.includes('wrong pin') ||
             lowerSignedData.includes('pin verification failed')) {
@@ -808,8 +974,18 @@ done
         
         // Handle various PIN-related error cases
         if (lowerErrorMsg.includes('pin')) {
+          // First check for PIN blocked
+          if (lowerErrorMsg.includes('pin blocked') || errorMsg.includes('PIN blocked')) {
+            console.error('[YubiKeyService] YubiKey PIN is blocked');
+            return {
+              success: false,
+              needsPin: false, // Don't prompt for PIN since it's blocked
+              error: 'YubiKey PIN is blocked. You need to reset it using the YubiKey Manager (ykman) application.',
+              yubiKeyDetected: true
+            };
+          }
           // Check for specific PIN error messages
-          if (lowerErrorMsg.includes('bad pin') || 
+          else if (lowerErrorMsg.includes('bad pin') || 
               lowerErrorMsg.includes('incorrect pin') || 
               lowerErrorMsg.includes('wrong pin') ||
               lowerErrorMsg.includes('verification failed')) {
@@ -848,13 +1024,382 @@ done
   }
 
   /**
-   * Decrypt data using the YubiKey
-   * This is a placeholder - actual implementation would require OpenPGP.js integration
+   * Decrypt data using the YubiKey with PIN
+   * This is a real implementation that uses GPG and the YubiKey
    */
-  async decryptWithYubiKey(encryptedData: string): Promise<string> {
-    // This is a placeholder for actual decryption functionality
-    // In a real implementation, you would use OpenPGP.js with YubiKey
-    throw new Error('YubiKey decryption not implemented yet');
+  async decryptWithYubiKey(encryptedData: string, pin?: string): Promise<{
+    success: boolean;
+    decryptedText?: string;
+    needsPin?: boolean;
+    error?: string;
+    yubiKeyDetected: boolean;
+  }> {
+    try {
+      console.log('[YubiKeyService] Attempting to decrypt data with YubiKey');
+      
+      // First check if YubiKey is connected
+      const yubiKeyInfo = await this.detectYubiKey();
+      if (!yubiKeyInfo.detected) {
+        console.log('[YubiKeyService] No YubiKey detected during decryption');
+        return {
+          success: false,
+          error: 'YubiKey not detected',
+          yubiKeyDetected: false
+        };
+      }
+      
+      // Check if YubiKey has PGP keys
+      if (!yubiKeyInfo.pgpInfo || !yubiKeyInfo.pgpInfo.decryptionKey) {
+        return {
+          success: false,
+          error: 'YubiKey does not have a decryption key configured',
+          yubiKeyDetected: true
+        };
+      }
+      
+      // Try to ensure GPG can access YubiKey keys - import if needed
+      const gpgSetupValid = await this.verifyGPGYubiKeySetup();
+      if (!gpgSetupValid) {
+        console.log('[YubiKeyService] GPG YubiKey setup verification failed, attempting auto-import');
+        
+        // Attempt auto-import of YubiKey keys to GPG
+        const importResult = await this.forceImportToGPG().catch(err => {
+          console.warn('[YubiKeyService] Failed to auto-import YubiKey keys to GPG:', err);
+          return { success: false };
+        });
+        
+        if (!importResult.success) {
+          return {
+            success: false,
+            error: 'GPG cannot access YubiKey keys. Please ensure GPG is properly configured with your YubiKey.',
+            yubiKeyDetected: true
+          };
+        }
+        
+        console.log('[YubiKeyService] Successfully auto-imported YubiKey keys to GPG');
+      }
+      
+      // Create a temporary directory for our decryption operation
+      const { execAsync } = require('./utils');
+      const fs = require('fs');
+      const path = require('path');
+      const { app } = require('electron');
+      
+      const tempDir = path.join(app.getPath('temp'), 'yubikey-decrypt-' + Date.now());
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+      
+      try {
+        // Write the encrypted data to a file
+        const encryptedFile = path.join(tempDir, 'encrypted-data.asc');
+        fs.writeFileSync(encryptedFile, encryptedData);
+        
+        const outputFile = path.join(tempDir, 'decrypted-output.txt');
+        
+        // First check if we need a PIN by trying to decrypt without --batch mode
+        // This will trigger interactive PIN entry if needed
+        if (!pin) {
+          try {
+            // Try a test command to see if PIN is needed
+            const { stdout: testOutput } = await execAsync(`gpg --list-packets "${encryptedFile}"`, { 
+              timeout: 5000 
+            });
+            
+            console.log('[YubiKeyService] Packet info:', testOutput);
+            
+            // Check if YubiKey is properly set up for this key
+            if (testOutput.includes('encrypted with') && !testOutput.includes('error')) {
+              console.log('[YubiKeyService] Key appears to be accessible, attempting non-interactive decryption');
+              
+              try {
+                // First, check if this command would need a PIN without actually running decryption
+                await execAsync(`gpg --pinentry-mode error --list-only --decrypt "${encryptedFile}"`, { 
+                  timeout: 5000
+                });
+                
+                console.log('[YubiKeyService] Key does not require PIN, proceeding with decryption');
+              } catch (pinCheckError) {
+                // If we get here, PIN is likely needed
+                const errorMsg = pinCheckError.message || '';
+                
+                if (errorMsg.includes('pinentry') || 
+                    errorMsg.includes('Inappropriate ioctl') || 
+                    errorMsg.includes('PIN')) {
+                  console.log('[YubiKeyService] PIN is required for this key');
+                  return {
+                    success: false,
+                    needsPin: true,
+                    error: 'PIN required for YubiKey decryption',
+                    yubiKeyDetected: true
+                  };
+                }
+              }
+            }
+          } catch (testError) {
+            console.warn('[YubiKeyService] Error during test:', testError);
+            // If we can't determine, we'll assume PIN is needed
+            if (testError.message?.includes('secret key not available') || 
+                testError.message?.includes('Inappropriate ioctl')) {
+              return {
+                success: false,
+                needsPin: true,
+                error: 'PIN required for YubiKey decryption',
+                yubiKeyDetected: true
+              };
+            }
+          }
+        }
+        
+        let decryptCommand = '';
+        let env = { ...process.env };
+        
+        if (pin) {
+          // Normalize the PIN - ensure it's a string, trim whitespace
+          const normalizedPin = pin.toString().trim();
+          
+          // Log PIN validation attempt (without showing the actual PIN)
+          console.log('[YubiKeyService] Using provided PIN for decryption:');
+          console.log(`[YubiKeyService] - PIN length: ${normalizedPin.length}`);
+          console.log(`[YubiKeyService] - PIN contains only digits: ${/^\d+$/.test(normalizedPin)}`);
+          
+          // Write PIN to temp file
+          const pinFile = path.join(tempDir, 'pin.txt');
+          fs.writeFileSync(pinFile, normalizedPin, { mode: 0o600 }); // Secure permissions
+          
+          // Add PIN env vars (multiple methods for compatibility)
+          env.PINENTRY_USER_DATA = normalizedPin;
+          env.GPG_PIN = normalizedPin;
+          env.GPG_TTY = process.stdout.isTTY ? process.env.TTY : undefined;
+          
+          decryptCommand = `gpg --pinentry-mode loopback --passphrase-fd 0 --decrypt --output "${outputFile}" "${encryptedFile}"`;
+          
+          try {
+            // Execute with PIN passed via stdin
+            const childProcess = require('child_process');
+            const gpgProcess = childProcess.spawn('gpg', [
+              '--pinentry-mode', 'loopback',
+              '--passphrase-fd', '0',
+              '--decrypt',
+              '--output', outputFile,
+              encryptedFile
+            ], { env });
+            
+            // Write PIN to stdin
+            gpgProcess.stdin.write(normalizedPin + '\n');
+            gpgProcess.stdin.end();
+            
+            // Collect output
+            let stdout = '';
+            let stderr = '';
+            
+            gpgProcess.stdout.on('data', (data: Buffer) => {
+              stdout += data.toString();
+            });
+            
+            gpgProcess.stderr.on('data', (data: Buffer) => {
+              stderr += data.toString();
+            });
+            
+            // Wait for process to complete
+            const exitCode = await new Promise((resolve) => {
+              gpgProcess.on('close', resolve);
+            });
+            
+            // Add timeout for safety
+            const timeout = setTimeout(() => {
+              gpgProcess.kill();
+            }, 30000);
+            
+            if (exitCode === 0) {
+              console.log('[YubiKeyService] GPG decryption succeeded via stdin PIN');
+              clearTimeout(timeout);
+            } else {
+              console.error('[YubiKeyService] GPG decryption failed with code:', exitCode);
+              console.error('[YubiKeyService] Stderr:', stderr);
+              clearTimeout(timeout);
+              
+              if (stderr.includes('Inappropriate ioctl')) {
+                // YubiKey needs a PIN but couldn't get it programmatically
+                return {
+                  success: false,
+                  needsPin: true,
+                  error: 'PIN required for YubiKey decryption (interactive mode needed)',
+                  yubiKeyDetected: true
+                };
+              }
+              
+              throw new Error(`GPG decryption failed: ${stderr}`);
+            }
+          } catch (spawnError) {
+            console.error('[YubiKeyService] Error during spawn-based decryption:', spawnError);
+            
+            // Try alternative method - use --yes flag to suppress confirmation prompts
+            try {
+              console.log('[YubiKeyService] Trying alternative decryption method');
+              await execAsync(`echo "${normalizedPin}" | gpg --batch --yes --passphrase-fd 0 --decrypt --output "${outputFile}" "${encryptedFile}"`, { 
+                env, 
+                timeout: 30000
+              });
+              console.log('[YubiKeyService] Alternative decryption method succeeded');
+            } catch (altError) {
+              console.error('[YubiKeyService] Alternative decryption method failed:', altError);
+              
+              // If "Inappropriate ioctl" error, it means we need interactive PIN entry
+              if (altError.message?.includes('Inappropriate ioctl') || 
+                  altError.stderr?.includes('Inappropriate ioctl')) {
+                return {
+                  success: false,
+                  needsPin: true,
+                  error: 'YubiKey requires an interactive PIN prompt. Please try interactive mode.',
+                  yubiKeyDetected: true
+                };
+              }
+              
+              throw altError;
+            }
+          }
+        } else {
+          // No PIN provided, try non-interactive approach first
+          try {
+            console.log('[YubiKeyService] Trying decryption with no PIN');
+            await execAsync(`gpg --batch --yes --decrypt --output "${outputFile}" "${encryptedFile}"`, {
+              timeout: 30000
+            });
+            console.log('[YubiKeyService] Decryption with no PIN succeeded');
+          } catch (noPinError) {
+            console.error('[YubiKeyService] Error decrypting without PIN:', noPinError);
+            
+            // If "Inappropriate ioctl" error, it means we need interactive PIN entry
+            if (noPinError.message?.includes('Inappropriate ioctl') || 
+                noPinError.stderr?.includes('Inappropriate ioctl')) {
+              return {
+                success: false,
+                needsPin: true,
+                error: 'PIN required for YubiKey decryption',
+                yubiKeyDetected: true
+              };
+            }
+            
+            throw noPinError;
+          }
+        }
+        
+        // Check if output file exists
+        if (!fs.existsSync(outputFile)) {
+          console.error('[YubiKeyService] No output file was generated during decryption');
+          return {
+            success: false,
+            needsPin: true,
+            error: 'Decryption failed - PIN likely required',
+            yubiKeyDetected: true
+          };
+        }
+        
+        // Read the decrypted output
+        const decryptedText = fs.readFileSync(outputFile, 'utf8');
+        
+        // Clean up temporary files
+        try {
+          fs.rmSync(tempDir, { recursive: true, force: true });
+        } catch (cleanupError) {
+          console.warn('[YubiKeyService] Failed to clean up temporary directory:', cleanupError);
+        }
+        
+        console.log('[YubiKeyService] Decryption successful, data decrypted with YubiKey');
+        return {
+          success: true,
+          decryptedText,
+          yubiKeyDetected: true
+        };
+      } catch (error) {
+        console.error('[YubiKeyService] Error decrypting with YubiKey:', error);
+        
+        // Check if the error message indicates PIN is needed or PIN is incorrect
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        const lowerErrorMsg = errorMsg.toLowerCase();
+        
+        // Clean up temporary files
+        try {
+          if (fs.existsSync(tempDir)) {
+            fs.rmSync(tempDir, { recursive: true, force: true });
+          }
+        } catch (cleanupError) {
+          console.warn('[YubiKeyService] Error cleaning up temp dir:', cleanupError);
+        }
+        
+        // Check for PIN blocked error
+        if (lowerErrorMsg.includes('pin blocked') || errorMsg.includes('PIN blocked') || 
+            (error.stderr && (error.stderr.includes('PIN blocked') || error.stderr.toLowerCase().includes('pin blocked')))) {
+          console.error('[YubiKeyService] YubiKey PIN is blocked');
+          return {
+            success: false,
+            needsPin: false, // Don't prompt for PIN since it's blocked
+            error: 'YubiKey PIN is blocked. You need to reset it using the YubiKey Manager (ykman) application.',
+            yubiKeyDetected: true
+          };
+        }
+        
+        // Handle specific "Inappropriate ioctl" error which means PIN is needed interactively
+        if (errorMsg.includes('Inappropriate ioctl') || 
+            (error.stderr && error.stderr.includes('Inappropriate ioctl'))) {
+          return {
+            success: false,
+            needsPin: true,
+            error: 'YubiKey requires an interactive PIN prompt',
+            yubiKeyDetected: true
+          };
+        }
+        
+        // Handle various PIN-related error cases
+        if (lowerErrorMsg.includes('pin')) {
+          // First check for PIN blocked
+          if (lowerErrorMsg.includes('pin blocked') || errorMsg.includes('PIN blocked')) {
+            console.error('[YubiKeyService] YubiKey PIN is blocked');
+            return {
+              success: false,
+              needsPin: false, // Don't prompt for PIN since it's blocked
+              error: 'YubiKey PIN is blocked. You need to reset it using the YubiKey Manager (ykman) application.',
+              yubiKeyDetected: true
+            };
+          }
+          // Check for specific PIN error messages
+          else if (lowerErrorMsg.includes('bad pin') || 
+              lowerErrorMsg.includes('incorrect pin') || 
+              lowerErrorMsg.includes('wrong pin') ||
+              lowerErrorMsg.includes('verification failed')) {
+            console.error('[YubiKeyService] PIN verification failed');
+            return {
+              success: false,
+              needsPin: true,
+              error: 'Incorrect PIN. Please try again with the correct PIN.',
+              yubiKeyDetected: true
+            };
+          } else {
+            // Generic PIN required case
+            return {
+              success: false,
+              needsPin: true,
+              error: 'PIN required for decryption',
+              yubiKeyDetected: true
+            };
+          }
+        }
+        
+        return {
+          success: false,
+          error: errorMsg,
+          yubiKeyDetected: true
+        };
+      }
+    } catch (error) {
+      console.error('[YubiKeyService] Unexpected error in decryptWithYubiKey:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        yubiKeyDetected: false
+      };
+    }
   }
   
   /**
