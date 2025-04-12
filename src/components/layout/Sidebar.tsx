@@ -118,7 +118,7 @@ const Sidebar = ({ activePath, setActivePath, onComposeClick, onPremiumClick }: 
       
       {/* Version */}
       <div className="p-2 text-xs text-gray-600 text-center">
-        Secure Mail Client v1.0.0
+        Secure Mail Client v1.0.8
       </div>
     </div>
   );
