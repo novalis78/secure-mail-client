@@ -324,17 +324,35 @@ const EmailSettings = () => {
     }
 
     try {
+      setIsLoading(true);
+      setError(null); // Clear any previous errors
       const result = await electronAPI.oauth.logout();
       
       if (result.success) {
+        // Always set to not authenticated - this ensures UI shows correct state
+        // even if there were errors with token revocation on Google's side
         setIsOAuthAuthenticated(false);
-        setStatus('disconnected');
-        setStatusMessage('');
+        setStatus('success');
+        setStatusMessage('Successfully disconnected from Google');
+        
+        // Show success message temporarily
+        setTimeout(() => {
+          if (status === 'success' && statusMessage === 'Successfully disconnected from Google') {
+            setStatus('disconnected');
+            setStatusMessage('');
+          }
+        }, 3000);
       } else {
         throw new Error(result.error || 'OAuth logout failed');
       }
     } catch (err) {
+      console.error('Error during logout:', err);
       setError(err instanceof Error ? err.message : 'An unknown error occurred during OAuth logout');
+      
+      // Even if there's an error, we should still reset the UI state since we've cleared local tokens
+      setIsOAuthAuthenticated(false);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -366,6 +384,13 @@ const EmailSettings = () => {
         <div className="bg-green-500/10 text-green-500 p-2 rounded-lg flex items-center gap-1.5 text-[9px]">
           <CheckCircle className="w-2.5 h-2.5" />
           <span>{statusMessage || 'Connected successfully'}</span>
+        </div>
+      )}
+      
+      {status === 'success' && (
+        <div className="bg-green-500/10 text-green-500 p-2 rounded-lg flex items-center gap-1.5 text-[9px]">
+          <CheckCircle className="w-2.5 h-2.5" />
+          <span>{statusMessage}</span>
         </div>
       )}
       
@@ -567,8 +592,13 @@ const EmailSettings = () => {
                   </button>
                   <button
                     onClick={handleOAuthLogout}
-                    className="bg-red-500/20 text-red-500 px-3 py-2 rounded-lg hover:bg-red-500/30 text-xs font-medium w-24 flex items-center justify-center h-[28px]"
+                    className="w-28 bg-red-500/20 text-red-500 px-3 py-2 rounded-lg hover:bg-red-500/30 text-xs font-medium flex items-center justify-center gap-2"
                   >
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <polyline points="16 17 21 12 16 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
                     Disconnect
                   </button>
                 </div>

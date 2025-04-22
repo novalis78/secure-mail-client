@@ -363,25 +363,81 @@ public async authenticate(): Promise<{ success: boolean; error?: string }> {
   /**
    * Logout and revoke tokens
    */
-  public async logout(): Promise<{ success: boolean; error?: string }> {
+  public async logout(): Promise<{ success: boolean; error?: string; message?: string }> {
     try {
       if (this.isAuthenticated && this.oauth2Client.credentials.access_token) {
-        // Revoke the token
-        await this.oauth2Client.revokeToken(
-          this.oauth2Client.credentials.access_token as string
-        );
+        try {
+          // Try to revoke the token, but don't fail if this doesn't work
+          // Token might already be expired or revoked
+          await this.oauth2Client.revokeToken(
+            this.oauth2Client.credentials.access_token as string
+          );
+          console.log('Token successfully revoked');
+        } catch (revokeError) {
+          // Just log the error but continue with logout process
+          // This is likely an "invalid_token" error when token is already expired
+          console.error('OAuth token revocation error:', revokeError);
+          console.log('Continuing with logout process despite token revocation error');
+        }
       }
       
-      // Clear saved token
+      // Always clear saved token and set as not authenticated
+      // This ensures the user is logged out locally even if token revocation failed
       this.clearToken();
       this.isAuthenticated = false;
       
-      return { success: true };
+      return { success: true, message: 'Logged out successfully' };
     } catch (error) {
       console.error('OAuth logout error:', error);
       return {
         success: false,
         error: `Logout failed: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * Mark an email as read/unread using Gmail API
+   */
+  public async markEmailReadStatus(messageId: string, markAsRead: boolean): Promise<{ success: boolean; error?: string }> {
+    try {
+      if (!this.isAuthenticated) {
+        throw new Error('Not authenticated. Please authenticate first.');
+      }
+      
+      // Refresh token if needed
+      await this.refreshTokenIfNeeded();
+      
+      // Initialize Gmail API
+      const gmail = google.gmail({ version: 'v1', auth: this.oauth2Client });
+      
+      // Add or remove the UNREAD label
+      const requestBody: any = {
+        removeLabelIds: [],
+        addLabelIds: []
+      };
+
+      if (markAsRead) {
+        requestBody.removeLabelIds = ['UNREAD'];
+      } else {
+        requestBody.addLabelIds = ['UNREAD'];
+      }
+      
+      // Modify the message labels
+      await gmail.users.messages.modify({
+        userId: 'me',
+        id: messageId,
+        requestBody
+      });
+      
+      return { 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error modifying email read status:', error);
+      return {
+        success: false,
+        error: `Failed to modify email: ${error.message}`
       };
     }
   }

@@ -1352,6 +1352,24 @@ electron_1.ipcMain.handle('oauth:fetch-emails', async () => {
         return { success: false, emails: [], error: error.message };
     }
 });
+// Handle marking emails as read/unread
+electron_1.ipcMain.handle('oauth:mark-email-read-status', async (_, { messageId, markAsRead }) => {
+    if (!oauthService) {
+        console.warn('OAuth service not initialized, oauth:mark-email-read-status called');
+        return {
+            success: false,
+            error: 'OAuth service not available. Check credentials.json file.'
+        };
+    }
+    try {
+        const result = await oauthService.markEmailReadStatus(messageId, markAsRead);
+        return result;
+    }
+    catch (error) {
+        console.error('Error marking email read status:', error);
+        return { success: false, error: error.message };
+    }
+});
 electron_1.ipcMain.handle('oauth:send-email', async (_, params) => {
     if (!oauthService) {
         console.warn('OAuth service not initialized, oauth:send-email called');

@@ -4,11 +4,12 @@ This document outlines features, buttons, and UI elements that exist in the inte
 
 ## Email Functionality
 
-1. **SMTP Email Sending**
+1. **Generic IMAP SERVER SUPPORT**
    - Status: Not implemented
    - Details: While UI for composing emails exists, backend SMTP functionality is missing
-   - Location: `ComposeEmail.tsx` component has complete UI but lacks full backend support
+   - Generic Outlook oAuth/Yahoo OAuth support?
    - Priority: High
+   
 
 2. **Reply, Forward, Delete Functions**
    - Status: UI only, not functional
@@ -76,12 +77,6 @@ This document outlines features, buttons, and UI elements that exist in the inte
    - Location: `/src/components/mail/MailDetail.tsx` lines 616-632
    - Priority: High
 
-3. **Dark/Light Theme Toggle**
-   - Status: Not implemented
-   - Details: Only dark theme is available, no toggle function
-   - Location: Referenced in `/development/todo.md` line 37
-   - Priority: Low
-
 4. **Drag and Drop for Attachments**
    - Status: Not implemented
    - Details: File attachments only through file picker, no drag and drop
@@ -116,17 +111,6 @@ This document outlines features, buttons, and UI elements that exist in the inte
 
 ## Bug Fixes
 
-1. **Stray Character in Mail Detail**
-   - Status: Known bug
-   - Details: Extraneous ">" character appears in mail detail
-   - Location: Referenced in `/development/todo.md` line 208
-   - Priority: Low
-
-2. **TypeScript Errors**
-   - Status: Known issue
-   - Details: TypeScript errors related to YubiKey API
-   - Location: `/src/components/mail/ComposeEmail.tsx` line 1 has "@ts-nocheck"
-   - Priority: Medium
 
 ## Next Steps Implementation Plan
 

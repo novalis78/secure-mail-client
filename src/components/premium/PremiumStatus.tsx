@@ -312,6 +312,31 @@ const PremiumStatus: React.FC<PremiumStatusProps> = ({
               </div>
             )}
             
+            {premiumStatus.bitcoinAddress && (
+              <div className="flex justify-between text-white">
+                <span>Address:</span>
+                <span className="font-medium text-white font-mono text-xs">
+                  {premiumStatus.bitcoinAddress.substring(0, 8)}...{premiumStatus.bitcoinAddress.substring(premiumStatus.bitcoinAddress.length - 8)}
+                </span>
+              </div>
+            )}
+            
+            {premiumStatus.bitcoinAddress && (
+              <div className="mt-2 mb-2">
+                <a 
+                  href={`https://mempool.space/address/${premiumStatus.bitcoinAddress}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-accent-green hover:underline text-xs flex items-center justify-center w-full bg-accent-green/10 border border-accent-green/20 rounded-md p-2"
+                >
+                  <svg className="h-3.5 w-3.5 mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  View payment on blockchain explorer
+                </a>
+              </div>
+            )}
+            
             {premiumStatus.partialPayment && (
               <div className="mt-2 bg-amber-500/10 border border-amber-500/20 rounded-md p-2 text-amber-400 text-xs">
                 Note: Your payment was slightly less than the requested amount, but was accepted because it was made more than 24 hours ago.
@@ -468,17 +493,17 @@ const PremiumStatus: React.FC<PremiumStatusProps> = ({
             
             {/* Link to view address on blockchain explorer */}
             {bitcoinAddress && (
-              <div className="mt-2 mb-3 p-2 rounded-lg bg-gray-800/50 text-xs">
+              <div className="mt-2 mb-3">
                 <a 
                   href={`https://mempool.space/address/${bitcoinAddress}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-accent-green hover:underline flex items-center"
+                  className="text-center text-white hover:text-accent-green/90 text-xs flex items-center justify-center bg-gray-800 border border-gray-700 rounded-lg p-2.5"
                 >
                   <svg className="h-3.5 w-3.5 mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                   </svg>
-                  View transaction on blockchain
+                  View transaction on blockchain explorer
                 </a>
               </div>
             )}

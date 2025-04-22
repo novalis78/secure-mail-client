@@ -162,6 +162,33 @@ const PremiumAdmin: React.FC = () => {
         <p>XPUB keys are used for generating deterministic Bitcoin addresses.</p>
         <p>Changes to the XPUB key will affect all future premium payment addresses.</p>
       </div>
+      
+      {currentXpub && (
+        <div className="mt-4 p-4 bg-gray-800 border border-gray-700 rounded-lg">
+          <h3 className="text-white font-medium mb-2">Payment Information</h3>
+          <div className="flex flex-col space-y-2 mb-4">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">Payment Address:</span>
+              <span className="text-white font-mono text-xs truncate">{currentXpub.slice(0, 10)}...{currentXpub.slice(-10)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">Payment Method:</span>
+              <span className="text-white">Bitcoin (BTC)</span>
+            </div>
+          </div>
+          <a 
+            href={`https://mempool.space/`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center text-accent-green hover:text-accent-green/80 text-sm mt-2"
+          >
+            <svg className="h-4 w-4 mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            View transactions on Bitcoin explorer
+          </a>
+        </div>
+      )}
     </div>
   );
 };

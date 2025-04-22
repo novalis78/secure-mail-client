@@ -268,11 +268,20 @@ export interface OAuthAPI {
   logout: () => Promise<{
     success: boolean;
     error?: string;
+    message?: string;
   }>;
   
   fetchEmails: () => Promise<{
     success: boolean;
     emails?: any[];
+    error?: string;
+  }>;
+  
+  markEmailReadStatus: (params: {
+    messageId: string;
+    markAsRead: boolean;
+  }) => Promise<{
+    success: boolean;
     error?: string;
   }>;
   

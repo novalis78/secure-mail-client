@@ -92,7 +92,7 @@ const Sidebar = ({ activePath, setActivePath, onComposeClick, onPremiumClick }: 
             onClick={onPremiumClick || (() => setShowPremiumStatus(true))}
             className={`w-full flex items-center justify-between p-2 rounded-lg text-sm transition-colors ${
               isPremium 
-                ? 'bg-accent-green/20 text-accent-green border border-accent-green/30' 
+                ? 'bg-accent-green/20 text-white border border-accent-green/30' 
                 : 'bg-gray-700/50 text-gray-400 hover:text-gray-300 hover:bg-gray-700/80 border border-gray-700'
             }`}
           >

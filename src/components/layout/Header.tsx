@@ -162,11 +162,7 @@ const Header = ({ status, onSettingsClick, onRefreshClick, isRefreshing = false,
                 />
               </div>
             )}
-            {selectedEmail && (
-              <div data-electron-no-drag="true">
-                <HeaderActions onAction={handleAction} />
-              </div>
-            )}
+            {/* Header actions removed from here - they're now only shown in MailDetail */}
           </div>
         </div>
       </header>

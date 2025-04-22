@@ -145,21 +145,21 @@ const MailList = ({ emails = [], selectedMailId, onSelectMail }: MailListProps) 
       <div className="flex-1 overflow-y-auto" style={{ backgroundColor: '#030b1a', backgroundImage: 'linear-gradient(to bottom, #041024 0%, #030b1a 100px)' }}>
         <div className="space-y-0.5 p-2">
           {filteredEmails.length === 0 ? (
-            <div className="text-center py-12 flex flex-col items-center justify-center h-64">
-              <div className="text-[#12d992] mb-5 relative">
-                <Lock size={48} className="opacity-70" style={{ filter: 'drop-shadow(0 0 8px rgba(18, 217, 146, 0.15))' }} />
+            <div className="text-center py-16 px-4 flex flex-col items-center justify-center h-80 mx-auto">
+              <div className="text-[#12d992] mb-8 relative">
+                <Lock size={56} className="opacity-70" style={{ filter: 'drop-shadow(0 0 8px rgba(18, 217, 146, 0.15))' }} />
                 <div className="absolute inset-0 flex items-center justify-center animate-pulse duration-3000">
-                  <Lock size={32} style={{ filter: 'drop-shadow(0 0 10px rgba(18, 217, 146, 0.25))' }} />
+                  <Lock size={40} style={{ filter: 'drop-shadow(0 0 10px rgba(18, 217, 146, 0.25))' }} />
                 </div>
               </div>
-              <p className="text-[#c1d1f7] font-medium text-sm mb-1" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)' }}>No secure messages found</p>
-              <p className="text-[#526583] text-xs max-w-xs">
+              <p className="text-[#c1d1f7] font-medium text-base mb-2" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)' }}>No secure messages found</p>
+              <p className="text-[#526583] text-sm max-w-xs">
                 {searchQuery 
                   ? "No messages match your current search filters" 
                   : "Your secure inbox is empty or messages still loading"}
               </p>
-              <div className="mt-8 pt-6 border-t border-[#0c1c3d] w-32 flex justify-center">
-                <Shield size={18} className="text-[#0d2146]" style={{ opacity: 0.7 }} />
+              <div className="mt-10 pt-6 border-t border-[#0c1c3d] w-36 flex justify-center">
+                <Shield size={20} className="text-[#0d2146]" style={{ opacity: 0.7 }} />
               </div>
             </div>
           ) : (

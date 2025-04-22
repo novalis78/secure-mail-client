@@ -920,22 +920,140 @@ const MailDetail = ({ email }: MailDetailProps) => {
           
           {/* Actions */}
           <div className="flex space-x-1 flex-shrink-0">
-            <button className="p-2 rounded-lg hover:bg-secondary-dark text-gray-400" title="Reply">
+            <button 
+              className="p-2 rounded-lg hover:bg-secondary-dark text-gray-400" 
+              title="Reply"
+              onClick={() => {
+                console.log('Reply functionality will be implemented here');
+              }}
+            >
               <Reply size={18} />
             </button>
-            <button className="p-2 rounded-lg hover:bg-secondary-dark text-gray-400" title="Forward">
+            <button 
+              className="p-2 rounded-lg hover:bg-secondary-dark text-gray-400" 
+              title="Forward"
+              onClick={() => {
+                console.log('Forward functionality will be implemented here');
+              }}
+            >
               <Forward size={18} />
             </button>
-            <button className="p-2 rounded-lg hover:bg-secondary-dark text-gray-400" title="Star">
+            <button 
+              className="p-2 rounded-lg hover:bg-secondary-dark text-gray-400" 
+              title="Star"
+              onClick={(e) => {
+                e.stopPropagation();
+                console.log('Star button clicked');
+                alert('Star functionality triggered - would star/unstar email in Gmail');
+                const electronAPI = (window as any).electron;
+                if (electronAPI?.oauth && email.id) {
+                  console.log('Star email functionality will be implemented here');
+                  // Implementation would use gmail.users.messages.modify to add/remove STARRED label
+                }
+              }}
+            >
               <Star size={18} />
             </button>
-            <button className="p-2 rounded-lg hover:bg-secondary-dark text-gray-400" title="Delete">
+            <button 
+              className="p-2 rounded-lg hover:bg-secondary-dark text-gray-400" 
+              title="Delete"
+              onClick={() => {
+                const electronAPI = (window as any).electron;
+                if (electronAPI?.oauth && email.id) {
+                  console.log('Delete email functionality will be implemented here');
+                  // Implementation would use gmail.users.messages.trash to move to trash
+                  // This would actually just add the TRASH label and remove INBOX label
+                }
+              }}
+            >
               <Trash2 size={18} />
             </button>
             <div className="relative">
-              <button className="p-2 rounded-lg hover:bg-secondary-dark text-gray-400" title="More Options">
+              <button 
+                className="p-2 rounded-lg hover:bg-secondary-dark text-gray-400" 
+                title="More Options"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  console.log("Dropdown button clicked");
+                  const dropdown = e.currentTarget.nextElementSibling;
+                  if (dropdown) {
+                    dropdown.classList.toggle('hidden');
+                    console.log("Toggled dropdown visibility");
+                  } else {
+                    console.log("Could not find dropdown element");
+                  }
+                }}
+              >
                 <ChevronDown size={18} />
               </button>
+              <div className="absolute right-0 mt-2 w-48 bg-secondary-dark rounded-xl shadow-lg py-2 z-50 hidden" 
+                   style={{ boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)' }}
+              >
+                <button
+                  className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-hover-dark flex items-center"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    console.log("Mark as read/unread clicked");
+                    alert("Marking email as read/unread");
+                    
+                    // Close the dropdown
+                    e.currentTarget.parentElement?.classList.add('hidden');
+                    
+                    const electronAPI = (window as any).electron;
+                    if (electronAPI?.oauth && email.id) {
+                      const isRead = email.status !== 'NEW';
+                      console.log(`Will toggle read status: current status=${email.status}, isRead=${isRead}, will mark as ${!isRead ? 'read' : 'unread'}`);
+                      
+                      // Show temporary notification of success
+                      const notification = document.createElement('div');
+                      notification.className = 'fixed top-4 right-4 bg-accent-green/90 text-white px-4 py-3 rounded-lg shadow-lg z-50';
+                      notification.textContent = `Email would be marked as ${!isRead ? 'read' : 'unread'}`;
+                      document.body.appendChild(notification);
+                      
+                      // Remove after 3 seconds
+                      setTimeout(() => {
+                        document.body.removeChild(notification);
+                      }, 3000);
+                      
+                      // Toggle the read status - commented out as API implementation for demo
+                      /*
+                      electronAPI.oauth.markEmailReadStatus({ 
+                        messageId: email.id, 
+                        markAsRead: !isRead 
+                      }).then((result: any) => {
+                        if (result.success) {
+                          console.log(`Email marked as ${!isRead ? 'read' : 'unread'}`);
+                          // Force refresh emails to update UI
+                          electronAPI.oauth.fetchEmails();
+                        }
+                      });
+                      */
+                    }
+                  }}
+                >
+                  <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                  </svg>
+                  {email.status === 'NEW' ? 'Mark as Read' : 'Mark as Unread'}
+                </button>
+                <button
+                  className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-hover-dark flex items-center"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Close the dropdown
+                    e.currentTarget.parentElement?.classList.add('hidden');
+                    console.log('Archive or move email');
+                  }}
+                >
+                  <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 8v13H3V8" />
+                    <path d="M1 3h22v5H1z" />
+                    <path d="M10 12h4" />
+                  </svg>
+                  Archive
+                </button>
+              </div>
             </div>
           </div>
         </div>
